@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { canCancel, hasConflict, receiptCode } from '../utils/businessRules'
+import { normalizeBarberPricing } from '../utils/pricing'
 import { readJson } from '../utils/seed'
 
 const persistAppointments = (appointments) => localStorage.setItem('barber-appointments', JSON.stringify(appointments))
@@ -7,7 +8,7 @@ const persistBarbers = (barbers) => localStorage.setItem('barber-barbers', JSON.
 
 export const useAppointmentStore = create((set, get) => ({
   appointments: readJson('barber-appointments', []),
-  barbers: readJson('barber-barbers', []),
+  barbers: readJson('barber-barbers', []).map(normalizeBarberPricing),
   settings: readJson('barber-settings', { shopName: 'Barber Prime', start: '08:00', end: '19:00', interval: 30 }),
   createAppointment: (payload) => {
     const appointments = readJson('barber-appointments', get().appointments)
@@ -46,7 +47,8 @@ export const useAppointmentStore = create((set, get) => ({
   },
   upsertBarber: (barber) => {
     const exists = get().barbers.some((item) => item.id === barber.id)
-    const next = exists ? get().barbers.map((item) => (item.id === barber.id ? barber : item)) : [...get().barbers, { ...barber, id: `barber-${Date.now()}` }]
+    const normalized = normalizeBarberPricing(barber)
+    const next = exists ? get().barbers.map((item) => (item.id === barber.id ? normalized : item)) : [...get().barbers, { ...normalized, id: `barber-${Date.now()}` }]
     persistBarbers(next)
     set({ barbers: next })
   },

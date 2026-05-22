@@ -4,7 +4,7 @@ import { Button, Card } from '../../design-system'
 import { Page } from '../../components/shared/AppLayout'
 import { useAppointmentStore } from '../../store/appointmentStore'
 import { useServiceStore } from '../../store/serviceStore'
-import { calculateDynamicSelection, getPaymentMethod, getPaymentStatus, getService, money } from '../../utils/pricing'
+import { calculateDynamicSelection, calculatePrice, getPaymentMethod, getPaymentStatus, getService, money } from '../../utils/pricing'
 
 export function Receipt() {
   const { id } = useParams()
@@ -15,8 +15,11 @@ export function Receipt() {
   const barber = barbers.find((item) => item.id === appointment?.barberId)
   if (!appointment) return <Page>Comprovante nao encontrado.</Page>
   const dynamic = appointment.selectedOptionsSnapshot?.length
-    ? { selectedOptions: appointment.selectedOptionsSnapshot, totalMinutes: appointment.estimatedMinutes }
+    ? { selectedOptions: appointment.selectedOptionsSnapshot, totalPrice: appointment.basePrice || appointment.price, totalMinutes: appointment.estimatedMinutes }
     : calculateDynamicSelection(appointment.selectedOptionIds || service?.optionIds || [], options)
+  const priceInfo = appointment.pricingBreakdown
+    ? { finalPrice: appointment.price, breakdown: appointment.pricingBreakdown }
+    : calculatePrice(dynamic, barber)
   const paymentMethod = getPaymentMethod(appointment.paymentMethod)
   const paymentStatus = getPaymentStatus(appointment.paymentStatus || 'pending')
   const groupedOptions = dynamic.selectedOptions.reduce((groups, option) => {
@@ -41,7 +44,8 @@ export function Receipt() {
           <p><strong>Barbeiro:</strong> {barber?.name}</p>
           <p><strong>Quando:</strong> {appointment.date} as {appointment.time}</p>
           <p><strong>Tempo estimado:</strong> {appointment.estimatedMinutes || service?.duration || dynamic.totalMinutes || 30} min</p>
-          <p><strong>Valor:</strong> {money(appointment.price)}</p>
+          <p><strong>Valor:</strong> {money(priceInfo.finalPrice)}</p>
+          <p><strong>Calculo:</strong> {priceInfo.breakdown}</p>
           <p><strong>Pagamento:</strong> {paymentMethod?.name || 'Nao informado'}</p>
           <p><strong>Status do pagamento:</strong> {paymentStatus?.name || 'Pendente'}</p>
           {dynamic.selectedOptions.length ? (

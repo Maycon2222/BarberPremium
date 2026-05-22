@@ -1,5 +1,18 @@
 export const PRICING_SEED_VERSION = 'dynamic-pricing-v2'
 
+export const PRICING_MODELS = [
+  { id: 'fixed', name: 'Preco fixo' },
+  { id: 'per_minute', name: 'Tarifa por minuto' },
+  { id: 'duration_tier', name: 'Faixas de duracao' },
+  { id: 'slot_only', name: 'Preco fixo + slots' },
+]
+
+export const DEFAULT_DURATION_TIERS = [
+  { upTo: 30, surcharge: 0 },
+  { upTo: 60, surcharge: 15 },
+  { upTo: 999, surcharge: 30 },
+]
+
 export const SERVICE_CATEGORIES = [
   { id: 'laterais', name: 'Laterais', description: 'Estilo e altura das laterais.', required: true, active: true, order: 10 },
   { id: 'parte-cima', name: 'Parte de cima', description: 'Tecnica aplicada no topo do cabelo.', required: true, active: true, order: 20 },
@@ -253,6 +266,10 @@ export function money(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
 }
 
+export function getPricingModelLabel(modelId = 'fixed') {
+  return PRICING_MODELS.find((model) => model.id === modelId)?.name || 'Preco fixo'
+}
+
 export function getService(id, services = SERVICES) {
   return services.find((service) => service.id === id)
 }
@@ -283,6 +300,62 @@ export function calculateDynamicSelection(optionIds = [], options = SERVICE_OPTI
     totalPrice: selectedOptions.length ? totalOptionPrice / selectedOptions.length : 0,
     totalMinutes: selectedOptions.reduce((sum, option) => sum + Number(option.estimatedMinutes || 0), 0),
   }
+}
+
+export function calculatePrice(baseResult = {}, barber = {}) {
+  const totalMinutes = Number(baseResult.totalMinutes || 0)
+  const basePrice = Number(baseResult.totalPrice || 0)
+  const pricingModel = barber?.pricingModel || 'fixed'
+
+  if (pricingModel === 'per_minute') {
+    const minuteRate = Number(barber.minuteRate || 0)
+    return {
+      finalPrice: totalMinutes * minuteRate,
+      breakdown: `${totalMinutes}min x ${money(minuteRate)}/min`,
+    }
+  }
+
+  if (pricingModel === 'duration_tier') {
+    const tiers = normalizeDurationTiers(barber.durationTiers)
+    const tier = tiers.find((item) => totalMinutes <= Number(item.upTo || 0)) || tiers.at(-1)
+    const surcharge = Number(tier?.surcharge || 0)
+    return {
+      finalPrice: basePrice + surcharge,
+      breakdown: `Base ${money(basePrice)} + faixa ${money(surcharge)} ate ${tier?.upTo || totalMinutes}min`,
+    }
+  }
+
+  if (pricingModel === 'slot_only') {
+    return {
+      finalPrice: basePrice,
+      breakdown: `${money(basePrice)} com reserva operacional de slots`,
+    }
+  }
+
+  return {
+    finalPrice: basePrice,
+    breakdown: `${money(basePrice)} pelo modelo ${getPricingModelLabel(pricingModel)}`,
+  }
+}
+
+export function normalizeBarberPricing(barber = {}) {
+  return {
+    ...barber,
+    pricingModel: barber.pricingModel || 'fixed',
+    minuteRate: Number(barber.minuteRate || 1.5),
+    durationTiers: normalizeDurationTiers(barber.durationTiers),
+  }
+}
+
+export function normalizeDurationTiers(tiers = DEFAULT_DURATION_TIERS) {
+  const normalized = (Array.isArray(tiers) && tiers.length ? tiers : DEFAULT_DURATION_TIERS)
+    .map((tier) => ({
+      upTo: Number(tier.upTo || 0),
+      surcharge: Number(tier.surcharge || 0),
+    }))
+    .filter((tier) => tier.upTo > 0)
+    .sort((a, b) => a.upTo - b.upTo)
+  return normalized.length ? normalized : DEFAULT_DURATION_TIERS
 }
 
 export function getCompatibilityBlock(option, selectedOptionIds = [], options = SERVICE_OPTIONS) {

@@ -14,7 +14,7 @@ import { useServiceStore } from '../../store/serviceStore'
 import { useToastStore } from '../../store/toastStore'
 import { availableTimes, isSlotUnavailable, isWorkingDay } from '../../utils/businessRules'
 import { formatPhoneBR } from '../../utils/br'
-import { PAYMENT_METHODS, calculateDynamicSelection, findSelectionConflicts, getActiveCategories, getActiveOptionsByCategory, getCompatibilityBlock, getPaymentStatusForMethod, money } from '../../utils/pricing'
+import { PAYMENT_METHODS, calculateDynamicSelection, calculatePrice, findSelectionConflicts, getActiveCategories, getActiveOptionsByCategory, getCompatibilityBlock, getPaymentStatusForMethod, getPricingModelLabel, money } from '../../utils/pricing'
 
 const steps = ['Barbeiro', 'Horario', 'Servico', 'Confirmacao']
 
@@ -45,6 +45,7 @@ export function BookingWizard() {
   const selectedOptionIds = form.watch('selectedOptionIds') || []
   const totals = calculateDynamicSelection(selectedOptionIds, options)
   const selectedBarber = barbers.find((barber) => barber.id === form.watch('barberId'))
+  const priceInfo = calculatePrice(totals, selectedBarber)
   const requiredCategoryIds = getActiveCategories(categories).filter((category) => category.required).map((category) => category.id)
   const missingRequired = requiredCategoryIds.filter((categoryId) => !totals.selectedOptions.some((option) => option.categoryId === categoryId))
   const selectionConflicts = findSelectionConflicts(selectedOptionIds, options)
@@ -78,7 +79,10 @@ export function BookingWizard() {
         ...data,
         serviceId: 'custom-dynamic',
         clientId: user?.id || 'guest',
-        price: totals.totalPrice,
+        price: priceInfo.finalPrice,
+        pricingModel: selectedBarber?.pricingModel || 'fixed',
+        pricingBreakdown: priceInfo.breakdown,
+        basePrice: totals.totalPrice,
         estimatedMinutes: totals.totalMinutes,
         selectedOptionIds,
         selectedOptionsSnapshot: totals.selectedOptions,
@@ -99,7 +103,7 @@ export function BookingWizard() {
             <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Agendamento dinamico</p>
             <h2 className="font-display text-3xl font-bold">Monte seu atendimento</h2>
           </div>
-          <LiveSummary totals={totals} />
+          <LiveSummary totals={totals} priceInfo={priceInfo} />
         </div>
         <div className="mt-5 h-2 rounded-full bg-[var(--bg-subtle)]">
           <motion.div className="h-2 rounded-full bg-[var(--accent-default)]" animate={{ width: `${((step + 1) / steps.length) * 100}%` }} />
@@ -117,8 +121,8 @@ export function BookingWizard() {
           <motion.div key={step} initial={{ opacity: 0, x: 32 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -32 }} transition={{ duration: 0.24 }}>
             {step === 0 && <BarberStep barbers={barbers} options={options} selected={form.watch('barberId')} select={(id) => form.setValue('barberId', id, { shouldValidate: true })} />}
             {step === 1 && <TimeStep dates={dates} times={availableTimes(settings)} form={form} appointments={appointments} />}
-            {step === 2 && <DynamicServiceStep form={form} categories={categories} options={options} selectedBarber={selectedBarber} missingRequired={missingRequired} selectionConflicts={selectionConflicts} />}
-            {step === 3 && <ConfirmStep form={form} totals={totals} categories={categories} selectedBarber={selectedBarber} />}
+            {step === 2 && <DynamicServiceStep form={form} categories={categories} options={options} selectedBarber={selectedBarber} missingRequired={missingRequired} selectionConflicts={selectionConflicts} priceInfo={priceInfo} />}
+            {step === 3 && <ConfirmStep form={form} totals={totals} categories={categories} selectedBarber={selectedBarber} priceInfo={priceInfo} />}
           </motion.div>
         </AnimatePresence>
         <div className="mt-6 flex justify-between gap-3">
@@ -130,11 +134,12 @@ export function BookingWizard() {
   )
 }
 
-function LiveSummary({ totals }) {
+function LiveSummary({ totals, priceInfo }) {
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-3 text-right">
       <p className="text-sm text-[var(--text-secondary)]">Total parcial</p>
-      <p className="text-xl font-bold text-[var(--accent-text)]">{money(totals.totalPrice)} <span className="text-sm font-medium text-[var(--text-secondary)]">/ {totals.totalMinutes} min</span></p>
+      <p className="text-xl font-bold text-[var(--accent-text)]">{money(priceInfo.finalPrice)} <span className="text-sm font-medium text-[var(--text-secondary)]">/ {totals.totalMinutes} min</span></p>
+      <p className="mt-1 max-w-xs text-xs text-[var(--text-secondary)]">{priceInfo.breakdown}</p>
     </div>
   )
 }
@@ -153,6 +158,7 @@ function BarberStep({ barbers, options, selected, select }) {
             <Avatar name={barber.name} size="lg" />
             <p className="mt-4 font-semibold">{barber.name}</p>
             <p className="text-sm text-[var(--text-secondary)]">{(barber.specialtyOptionIds?.length || barber.specialties?.length || 0)} especialidades cadastradas</p>
+            <span className="mt-3 inline-flex rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent-text)]">{getPricingModelLabel(barber.pricingModel)}</span>
             {specialtyNames.length ? (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {specialtyNames.map((name) => <span key={name} className="rounded-full bg-[var(--bg-subtle)] px-2 py-1 text-xs text-[var(--text-secondary)]">{name}</span>)}
@@ -184,6 +190,7 @@ function TimeStep({ dates, times, form, appointments }) {
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
         {times.map((time) => {
           const disabled = barberId ? isSlotUnavailable(appointments, barberId, date, time) : false
+          // TODO: no modelo slot_only, bloquear slots adjacentes quando a duracao ja estiver definida.
           return <button key={time} type="button" disabled={disabled} onClick={() => form.setValue('time', time, { shouldValidate: true })} className={`rounded-[var(--radius-md)] border px-3 py-3 text-sm ${form.watch('time') === time ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)]'} disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through`}>{time}</button>
         })}
       </div>
@@ -191,7 +198,7 @@ function TimeStep({ dates, times, form, appointments }) {
   )
 }
 
-function DynamicServiceStep({ form, categories, options, selectedBarber, missingRequired, selectionConflicts }) {
+function DynamicServiceStep({ form, categories, options, selectedBarber, missingRequired, selectionConflicts, priceInfo }) {
   const [serviceSearch, setServiceSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const selected = form.watch('selectedOptionIds') || []
@@ -215,6 +222,11 @@ function DynamicServiceStep({ form, categories, options, selectedBarber, missing
 
   return (
     <div className="grid gap-5">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--accent-default)] bg-[var(--accent-subtle)] p-4">
+        <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">{selectedBarber?.name || 'Barbeiro selecionado'} - {getPricingModelLabel(selectedBarber?.pricingModel)}</p>
+        <p className="mt-1 text-2xl font-bold">{money(priceInfo.finalPrice)}</p>
+        <p className="text-sm text-[var(--text-secondary)]">{priceInfo.breakdown}</p>
+      </div>
       <div className="grid gap-3 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-subtle)] p-4 md:grid-cols-[1fr_220px]">
         <Input label="Buscar servico" value={serviceSearch} onChange={(event) => setServiceSearch(event.target.value)} />
         <label className="block">
@@ -284,7 +296,7 @@ function getUnsupportedOptions(optionIds, barber, options) {
     .filter((option) => option && !barber.specialtyOptionIds.includes(option.id))
 }
 
-function ConfirmStep({ form, totals, categories, selectedBarber }) {
+function ConfirmStep({ form, totals, categories, selectedBarber, priceInfo }) {
   const { register, setValue, formState: { errors } } = form
   const date = form.watch('date')
   const time = form.watch('time')
@@ -307,7 +319,8 @@ function ConfirmStep({ form, totals, categories, selectedBarber }) {
       </label>
       <div className="md:col-span-2 rounded-[var(--radius-md)] bg-[var(--bg-subtle)] p-4">
         <CreditCard className="mb-2 h-5 w-5 text-[var(--accent-default)]" />
-        <p className="font-semibold">Total: {money(totals.totalPrice)} em {totals.totalMinutes} min</p>
+        <p className="font-semibold">Total: {money(priceInfo.finalPrice)} em {totals.totalMinutes} min</p>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">{priceInfo.breakdown}</p>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">Com {selectedBarber?.name || 'barbeiro selecionado'} em {date} as {time}</p>
         <p className="text-sm text-[var(--text-secondary)]">Modo demonstracao: pagamentos nao sao processados. PIX e cartao entram como pagos na simulacao.</p>
         <div className="mt-4 grid gap-3">

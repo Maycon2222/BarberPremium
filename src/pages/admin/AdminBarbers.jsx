@@ -3,9 +3,9 @@ import { Badge, Button, Card, Input } from '../../design-system'
 import { Page } from '../../components/shared/AppLayout'
 import { useAppointmentStore } from '../../store/appointmentStore'
 import { useServiceStore } from '../../store/serviceStore'
-import { getActiveCategories, getActiveOptionsByCategory } from '../../utils/pricing'
+import { DEFAULT_DURATION_TIERS, PRICING_MODELS, getActiveCategories, getActiveOptionsByCategory, getPricingModelLabel, money, normalizeBarberPricing } from '../../utils/pricing'
 
-const emptyBarber = { name: '', email: '', phone: '', active: true, specialties: [], specialtyOptionIds: [] }
+const emptyBarber = normalizeBarberPricing({ name: '', email: '', phone: '', active: true, specialties: [], specialtyOptionIds: [] })
 
 export function AdminBarbers() {
   const { barbers, upsertBarber, toggleBarber } = useAppointmentStore()
@@ -15,7 +15,7 @@ export function AdminBarbers() {
   const activeCategories = getActiveCategories(categories)
 
   const save = () => {
-    upsertBarber({ ...draft, id: editingId || draft.id })
+    upsertBarber({ ...normalizeBarberPricing(draft), id: editingId || draft.id })
     setDraft(emptyBarber)
     setEditingId('')
   }
@@ -24,7 +24,7 @@ export function AdminBarbers() {
     setEditingId(barber.id)
     setDraft({
       ...emptyBarber,
-      ...barber,
+      ...normalizeBarberPricing(barber),
       specialtyOptionIds: barber.specialtyOptionIds || [],
     })
   }
@@ -33,6 +33,23 @@ export function AdminBarbers() {
     const current = draft.specialtyOptionIds || []
     const next = current.includes(optionId) ? current.filter((id) => id !== optionId) : [...current, optionId]
     setDraft({ ...draft, specialtyOptionIds: next })
+  }
+
+  const updateTier = (index, key, value) => {
+    const durationTiers = [...(draft.durationTiers || DEFAULT_DURATION_TIERS)]
+    durationTiers[index] = { ...durationTiers[index], [key]: Number(value) }
+    setDraft({ ...draft, durationTiers })
+  }
+
+  const addTier = () => {
+    const durationTiers = [...(draft.durationTiers || DEFAULT_DURATION_TIERS)]
+    const last = durationTiers.at(-1)
+    setDraft({ ...draft, durationTiers: [...durationTiers, { upTo: Number(last?.upTo || 60) + 30, surcharge: Number(last?.surcharge || 0) + 10 }] })
+  }
+
+  const removeTier = (index) => {
+    const durationTiers = (draft.durationTiers || DEFAULT_DURATION_TIERS).filter((_, itemIndex) => itemIndex !== index)
+    setDraft({ ...draft, durationTiers })
   }
 
   return (
@@ -47,6 +64,35 @@ export function AdminBarbers() {
           <Input label="E-mail" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
           <Input label="Telefone" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.active} onChange={(event) => setDraft({ ...draft, active: event.target.checked })} /> Barbeiro ativo</label>
+
+          <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3">
+            <p className="mb-3 font-semibold">Modelo de precificacao</p>
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase text-[var(--text-secondary)]">Modelo</span>
+              <select value={draft.pricingModel || 'fixed'} onChange={(event) => setDraft({ ...draft, pricingModel: event.target.value })} className="h-12 w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-3">
+                {PRICING_MODELS.map((model) => <option key={model.id} value={model.id}>{model.name}</option>)}
+              </select>
+            </label>
+
+            {draft.pricingModel === 'per_minute' ? (
+              <div className="mt-3">
+                <Input label="Tarifa por minuto (R$)" type="number" min="0" step="0.01" value={draft.minuteRate || 0} onChange={(event) => setDraft({ ...draft, minuteRate: Number(event.target.value) })} />
+              </div>
+            ) : null}
+
+            {draft.pricingModel === 'duration_tier' ? (
+              <div className="mt-4 space-y-3">
+                {(draft.durationTiers || DEFAULT_DURATION_TIERS).map((tier, index) => (
+                  <div key={`${tier.upTo}-${index}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                    <Input label="Ate min" type="number" min="1" value={tier.upTo} onChange={(event) => updateTier(index, 'upTo', event.target.value)} />
+                    <Input label="Acrescimo R$" type="number" min="0" step="0.01" value={tier.surcharge} onChange={(event) => updateTier(index, 'surcharge', event.target.value)} />
+                    <Button variant="secondary" className="mt-6" disabled={(draft.durationTiers || DEFAULT_DURATION_TIERS).length <= 1} onClick={() => removeTier(index)}>Remover</Button>
+                  </div>
+                ))}
+                <Button variant="secondary" onClick={addTier}>Adicionar faixa</Button>
+              </div>
+            ) : null}
+          </div>
 
           <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3">
             <p className="mb-1 font-semibold">Especialidades dinamicas</p>
@@ -91,6 +137,10 @@ export function AdminBarbers() {
                   <p className="font-semibold">{barber.name}</p>
                   <p className="text-sm text-[var(--text-secondary)]">{barber.email}</p>
                   <p className="mt-2 text-sm text-[var(--text-secondary)]">{specialtyCount} especialidades vinculadas</p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                    {getPricingModelLabel(barber.pricingModel)}
+                    {barber.pricingModel === 'per_minute' ? ` - ${money(barber.minuteRate)}/min` : ''}
+                  </p>
                 </button>
                 <div className="flex items-center gap-2">
                   <Badge status={barber.active ? 'completed' : 'cancelled'}>{barber.active ? 'Ativo' : 'Inativo'}</Badge>

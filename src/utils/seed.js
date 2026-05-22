@@ -1,5 +1,5 @@
 import { addDays, format } from 'date-fns'
-import { PRICING_SEED_VERSION, PRODUCT_CATEGORIES, PRODUCT_FULFILLMENT_METHODS, PRODUCTS, SERVICE_CATEGORIES, SERVICE_OPTIONS, SERVICES } from './pricing.js'
+import { PRICING_SEED_VERSION, PRODUCT_CATEGORIES, PRODUCT_FULFILLMENT_METHODS, PRODUCTS, SERVICE_CATEGORIES, SERVICE_OPTIONS, SERVICES, normalizeBarberPricing } from './pricing.js'
 
 const barberSpecialtyPresets = {
   'barber-joao': [
@@ -60,9 +60,9 @@ const barberSpecialtyPresets = {
 }
 
 export const barbersSeed = [
-  { id: 'barber-joao', name: 'Joao Martins', email: 'joao@barberprime.local', phone: '(11) 98888-1111', active: true, specialties: ['corte-simples', 'corte-barba', 'barba'], specialtyOptionIds: barberSpecialtyPresets['barber-joao'] },
-  { id: 'barber-carlos', name: 'Carlos Vega', email: 'carlos@barberprime.local', phone: '(11) 97777-2222', active: true, specialties: ['corte-tesoura', 'pigmentacao', 'luzes'], specialtyOptionIds: barberSpecialtyPresets['barber-carlos'] },
-  { id: 'barber-rafael', name: 'Rafael Costa', email: 'rafael@barberprime.local', phone: '(11) 96666-3333', active: true, specialties: ['relaxamento', 'hidratacao', 'corte-barba'], specialtyOptionIds: barberSpecialtyPresets['barber-rafael'] },
+  { id: 'barber-joao', name: 'Joao Martins', email: 'joao@barberprime.local', phone: '(11) 98888-1111', active: true, specialties: ['corte-simples', 'corte-barba', 'barba'], specialtyOptionIds: barberSpecialtyPresets['barber-joao'], pricingModel: 'fixed' },
+  { id: 'barber-carlos', name: 'Carlos Vega', email: 'carlos@barberprime.local', phone: '(11) 97777-2222', active: true, specialties: ['corte-tesoura', 'pigmentacao', 'luzes'], specialtyOptionIds: barberSpecialtyPresets['barber-carlos'], pricingModel: 'duration_tier' },
+  { id: 'barber-rafael', name: 'Rafael Costa', email: 'rafael@barberprime.local', phone: '(11) 96666-3333', active: true, specialties: ['relaxamento', 'hidratacao', 'corte-barba'], specialtyOptionIds: barberSpecialtyPresets['barber-rafael'], pricingModel: 'per_minute', minuteRate: 1.5 },
 ]
 
 const today = new Date()
@@ -156,7 +156,7 @@ export function ensurePricingSeed() {
   const barbers = readJson('barber-barbers', [])
   if (barbers.length) {
     const migratedBarbers = barbers.map((barber) => ({
-      ...barber,
+      ...normalizeBarberPricing(barber),
       specialtyOptionIds: normalizeBarberSpecialties(barber),
     }))
     localStorage.setItem('barber-barbers', JSON.stringify(migratedBarbers))

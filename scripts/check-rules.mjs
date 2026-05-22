@@ -1,6 +1,7 @@
 import {
   SERVICE_OPTIONS,
   calculateDynamicSelection,
+  calculatePrice,
   findSelectionConflicts,
   getCompatibilityBlock,
   getOption,
@@ -23,6 +24,14 @@ assert(platinadoConflicts[0]?.message.includes('Descoloracao'), 'Platinado deve 
 const selection = calculateDynamicSelection(['laterais-degrade-baixo', 'parte-cima-tesoura'], SERVICE_OPTIONS)
 assert(selection.totalPrice === 5, 'Media esperada para Degrade baixo + Tesoura deve ser 5')
 assert(selection.totalMinutes === 40, 'Tempo esperado para Degrade baixo + Tesoura deve ser 40')
+const fixedPrice = calculatePrice(selection, { pricingModel: 'fixed' })
+assert(fixedPrice.finalPrice === 5, 'Modelo fixo deve preservar preco base atual')
+const perMinutePrice = calculatePrice(selection, { pricingModel: 'per_minute', minuteRate: 1.5 })
+assert(perMinutePrice.finalPrice === 60, 'Modelo por minuto deve multiplicar duracao pela tarifa')
+const tierPrice = calculatePrice(selection, { pricingModel: 'duration_tier', durationTiers: [{ upTo: 30, surcharge: 0 }, { upTo: 60, surcharge: 15 }] })
+assert(tierPrice.finalPrice === 20, 'Modelo por faixa deve somar acrescimo ao preco base')
+const slotOnlyPrice = calculatePrice(selection, { pricingModel: 'slot_only' })
+assert(slotOnlyPrice.finalPrice === 5, 'Modelo slot_only deve preservar preco base')
 
 const configuredTimes = availableTimes({ start: '09:00', end: '10:00', interval: 30 })
 assert(configuredTimes.join(',') === '09:00,09:30,10:00', 'Horarios devem respeitar configuracao administrativa')
