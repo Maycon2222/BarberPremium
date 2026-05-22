@@ -13,12 +13,6 @@ npm run check:rules
 
 `npm run check:rules` valida regras criticas de precificacao dinamica, compatibilidade, calculo de tempo/valor, metricas financeiras e migracao de dados.
 
-## Credenciais demo
-
-- Admin: `admin@barbearia.com` / `admin123`
-- Barbeiro: `joao@barbearia.com` / `barber123`
-- Cliente: `cliente@email.com` / `cliente123`
-
 ## Precificacao dinamica
 
 Os servicos nao dependem mais apenas de uma lista fixa. A base fica em:

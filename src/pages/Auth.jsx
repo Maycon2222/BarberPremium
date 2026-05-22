@@ -16,7 +16,7 @@ export function Login() {
   const navigate = useNavigate()
   const { login } = useAuthStore()
   const { notify } = useToastStore()
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: 'cliente@email.com', password: 'cliente123' } })
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
   const submit = async (data) => {
     try {
       const user = login(data)
@@ -33,7 +33,6 @@ export function Login() {
         <Input label="Senha" type="password" prefix={<Lock className="h-4 w-4" />} {...register('password')} error={errors.password?.message} />
         <Button loading={isSubmitting}>Acessar painel</Button>
       </form>
-      <p className="mt-4 text-sm text-[var(--text-secondary)]">Demo: admin@barbearia.com/admin123, joao@barbearia.com/barber123 ou cliente@email.com/cliente123.</p>
     </AuthFrame>
   )
 }

@@ -60,18 +60,15 @@ const barberSpecialtyPresets = {
 }
 
 export const barbersSeed = [
-  { id: 'barber-joao', name: 'Joao Martins', email: 'joao@barbearia.com', phone: '(11) 98888-1111', active: true, specialties: ['corte-simples', 'corte-barba', 'barba'], specialtyOptionIds: barberSpecialtyPresets['barber-joao'] },
-  { id: 'barber-carlos', name: 'Carlos Vega', email: 'carlos@barbearia.com', phone: '(11) 97777-2222', active: true, specialties: ['corte-tesoura', 'pigmentacao', 'luzes'], specialtyOptionIds: barberSpecialtyPresets['barber-carlos'] },
-  { id: 'barber-rafael', name: 'Rafael Costa', email: 'rafael@barbearia.com', phone: '(11) 96666-3333', active: true, specialties: ['relaxamento', 'hidratacao', 'corte-barba'], specialtyOptionIds: barberSpecialtyPresets['barber-rafael'] },
+  { id: 'barber-joao', name: 'Joao Martins', email: 'joao@barberprime.local', phone: '(11) 98888-1111', active: true, specialties: ['corte-simples', 'corte-barba', 'barba'], specialtyOptionIds: barberSpecialtyPresets['barber-joao'] },
+  { id: 'barber-carlos', name: 'Carlos Vega', email: 'carlos@barberprime.local', phone: '(11) 97777-2222', active: true, specialties: ['corte-tesoura', 'pigmentacao', 'luzes'], specialtyOptionIds: barberSpecialtyPresets['barber-carlos'] },
+  { id: 'barber-rafael', name: 'Rafael Costa', email: 'rafael@barberprime.local', phone: '(11) 96666-3333', active: true, specialties: ['relaxamento', 'hidratacao', 'corte-barba'], specialtyOptionIds: barberSpecialtyPresets['barber-rafael'] },
 ]
 
 const today = new Date()
 const date = (offset) => format(addDays(today, offset), 'yyyy-MM-dd')
 
 export const usersSeed = [
-  { id: 'admin-1', name: 'Admin Prime', email: 'admin@barbearia.com', password: 'admin123', role: 'admin', phone: '(11) 95555-0101' },
-  { id: 'barber-joao', name: 'Joao Martins', email: 'joao@barbearia.com', password: 'barber123', role: 'barber', phone: '(11) 98888-1111' },
-  { id: 'client-1', name: 'Cliente Demo', email: 'cliente@email.com', password: 'cliente123', role: 'client', phone: '(11) 99999-0000' },
 ]
 
 export const appointmentsSeed = [
@@ -109,6 +106,7 @@ export const appointmentsSeed = [
 
 export function seedLocalStorage() {
   ensurePricingSeed()
+  removeDemoCredentials()
   if (localStorage.getItem('barber-seeded') !== 'yes') {
     localStorage.setItem('barber-users', JSON.stringify(usersSeed))
     localStorage.setItem('barber-barbers', JSON.stringify(barbersSeed))
@@ -116,6 +114,19 @@ export function seedLocalStorage() {
     localStorage.setItem('barber-appointments', JSON.stringify(appointmentsSeed))
     localStorage.setItem('barber-settings', JSON.stringify({ shopName: 'Barber Prime', start: '08:00', end: '19:00', interval: 30 }))
     localStorage.setItem('barber-seeded', 'yes')
+  }
+}
+
+function removeDemoCredentials() {
+  const demoUserIds = ['admin-1', 'barber-joao', 'client-1']
+  const users = readJson('barber-users', [])
+  const session = readJson('barber-session', null)
+  const filteredUsers = users.filter((user) => !demoUserIds.includes(user.id))
+  if (filteredUsers.length !== users.length) {
+    localStorage.setItem('barber-users', JSON.stringify(filteredUsers))
+  }
+  if (session?.id && demoUserIds.includes(session.id)) {
+    localStorage.removeItem('barber-session')
   }
 }
 
