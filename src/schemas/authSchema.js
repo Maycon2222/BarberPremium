@@ -9,6 +9,7 @@ export const loginSchema = z.object({
 export const registerSchema = loginSchema.extend({
   name: z.string().min(3, 'Nome deve ter ao menos 3 caracteres'),
   phone: z.string().refine(isPhoneBR, 'Telefone invalido'),
+  role: z.enum(['client', 'barber']).default('client'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Senhas nao coincidem',

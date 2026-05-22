@@ -23,7 +23,9 @@ export const useAuthStore = create((set, get) => ({
   register: (payload) => {
     const users = readJson('barber-users', get().users)
     if (users.some((item) => item.email === payload.email)) throw new Error('E-mail ja cadastrado')
-    const user = { id: `client-${Date.now()}`, role: 'client', ...payload }
+    const { confirmPassword, role: requestedRole = 'client', ...account } = payload
+    const role = requestedRole === 'barber' ? 'barber' : 'client'
+    const user = { id: `${role}-${Date.now()}`, role, ...account }
     const next = [...users, user]
     persistUsers(next)
     const sessionUser = safeSessionUser(user)
