@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "server": "node server/index.js",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "check:rules": "node scripts/check-rules.mjs"
@@ -15,6 +16,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.10.5",
     "lucide-react": "^0.511.0",
+    "pg": "^8.13.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.56.3",
