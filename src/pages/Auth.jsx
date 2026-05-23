@@ -13,6 +13,8 @@ import { DEFAULT_DURATION_TIERS } from '../utils/pricing'
 import { brDateToISO, formatBirthDate, formatCNPJ, formatCPF, sanitizeDocument } from '../utils/documentValidation'
 import { verifyCNPJ, verifyCPF } from '../services/documentVerification'
 
+const ALLOW_UNVERIFIED_IDENTITY = import.meta.env.VITE_ALLOW_UNVERIFIED_IDENTITY === 'true'
+
 function redirectFor(role) {
   return role === 'admin' ? '/admin/dashboard' : role === 'barber' ? '/barber/dashboard' : '/client/dashboard'
 }
@@ -145,6 +147,12 @@ async function prepareClientIdentity(data, users, setError, setVerifyStatus, not
     }
     const [field, message] = fieldMap[verification.field] || fieldMap.nome
     setError(field, { message })
+    return null
+  }
+
+  if (!verification.verified && !ALLOW_UNVERIFIED_IDENTITY) {
+    setError('cpf', { message: 'Nao foi possivel confirmar CPF, nome, nascimento e mae. Configure a verificacao Serpro para cadastrar este CPF.' })
+    notify({ type: 'error', title: 'Cadastro bloqueado', message: 'CPF valido no formato nao confirma identidade sem consulta externa.' })
     return null
   }
 

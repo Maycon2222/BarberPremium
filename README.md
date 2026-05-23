@@ -21,7 +21,13 @@ O cadastro valida CPF/CNPJ localmente com digitos verificadores. Para verificaca
 VITE_SERPRO_TOKEN=seu_token_aqui
 ```
 
-Sem esse token, o cadastro de cliente continua funcionando e salva `verified: false` para revisao. CNPJ de barbeiro usa consulta ReceitaWS quando disponivel.
+Sem esse token, o cadastro de cliente com CPF fica bloqueado por padrao, porque a validacao local so confirma o digito verificador e nao comprova nome, nascimento ou nome da mae. Para permitir cadastros sem verificacao externa em ambiente de teste, configure:
+
+```env
+VITE_ALLOW_UNVERIFIED_IDENTITY=true
+```
+
+CNPJ de barbeiro usa consulta ReceitaWS quando disponivel.
 
 ## Precificacao dinamica
 
