@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "server": "node server/index.js",
-    "build": "vite build",
+    "build": "npm run prepare:db && vite build",
     "preview": "vite preview --host 127.0.0.1",
+    "prepare:db": "node scripts/prepare-db.mjs",
     "check:rules": "node scripts/check-rules.mjs"
   },
   "dependencies": {
