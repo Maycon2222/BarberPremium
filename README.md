@@ -13,6 +13,16 @@ npm run check:rules
 
 `npm run check:rules` valida regras criticas de precificacao dinamica, compatibilidade, calculo de tempo/valor, metricas financeiras e migracao de dados.
 
+## Verificacao de identidade
+
+O cadastro valida CPF/CNPJ localmente com digitos verificadores. Para verificacao externa de CPF via Serpro DataValid, configure:
+
+```env
+VITE_SERPRO_TOKEN=seu_token_aqui
+```
+
+Sem esse token, o cadastro de cliente continua funcionando e salva `verified: false` para revisao. CNPJ de barbeiro usa consulta ReceitaWS quando disponivel.
+
 ## Precificacao dinamica
 
 Os servicos nao dependem mais apenas de uma lista fixa. A base fica em:

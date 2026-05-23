@@ -9,6 +9,7 @@ import {
 } from '../src/utils/pricing.js'
 import { buildFinanceMetrics } from '../src/utils/finance.js'
 import { availableTimes, hasConflict, isSlotUnavailable } from '../src/utils/businessRules.js'
+import { formatCNPJ, formatCPF, sanitizeDocument, validateCNPJ, validateCPF } from '../src/utils/documentValidation.js'
 import { ensurePricingSeed } from '../src/utils/seed.js'
 
 function assert(condition, message) {
@@ -32,6 +33,16 @@ const tierPrice = calculatePrice(selection, { pricingModel: 'duration_tier', dur
 assert(tierPrice.finalPrice === 20, 'Modelo por faixa deve somar acrescimo ao preco base')
 const slotOnlyPrice = calculatePrice(selection, { pricingModel: 'slot_only' })
 assert(slotOnlyPrice.finalPrice === 5, 'Modelo slot_only deve preservar preco base')
+
+assert(validateCPF('529.982.247-25').valid, 'CPF valido deve passar nos digitos verificadores')
+assert(!validateCPF('111.111.111-11').valid, 'CPF repetido deve ser rejeitado')
+assert(!validateCPF('529.982.247-24').valid, 'CPF com digito invalido deve ser rejeitado')
+assert(formatCPF('52998224725') === '529.982.247-25', 'Mascara de CPF deve ser aplicada')
+assert(validateCNPJ('11.222.333/0001-81').valid, 'CNPJ valido deve passar nos digitos verificadores')
+assert(!validateCNPJ('00.000.000/0000-00').valid, 'CNPJ repetido deve ser rejeitado')
+assert(!validateCNPJ('11.222.333/0001-80').valid, 'CNPJ com digito invalido deve ser rejeitado')
+assert(formatCNPJ('11222333000181') === '11.222.333/0001-81', 'Mascara de CNPJ deve ser aplicada')
+assert(sanitizeDocument('11.222.333/0001-81') === '11222333000181', 'Documento deve ser normalizado para digitos')
 
 const configuredTimes = availableTimes({ start: '09:00', end: '10:00', interval: 30 })
 assert(configuredTimes.join(',') === '09:00,09:30,10:00', 'Horarios devem respeitar configuracao administrativa')

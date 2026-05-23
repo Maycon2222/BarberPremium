@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { sanitizeDocument } from '../utils/documentValidation'
 import { readJson } from '../utils/seed'
 
 const persistUsers = (users) => localStorage.setItem('barber-users', JSON.stringify(users))
@@ -23,6 +24,8 @@ export const useAuthStore = create((set, get) => ({
   register: (payload) => {
     const users = readJson('barber-users', get().users)
     if (users.some((item) => item.email === payload.email)) throw new Error('E-mail ja cadastrado')
+    if (payload.cpf && users.some((item) => sanitizeDocument(item.cpf || '') === sanitizeDocument(payload.cpf))) throw new Error('Este CPF ja possui uma conta. Faca login.')
+    if (payload.cnpj && users.some((item) => sanitizeDocument(item.cnpj || '') === sanitizeDocument(payload.cnpj))) throw new Error('Este CNPJ ja possui uma conta cadastrada.')
     const { confirmPassword, role: requestedRole = 'client', ...account } = payload
     const role = requestedRole === 'barber' ? 'barber' : 'client'
     const user = { id: `${role}-${Date.now()}`, role, ...account }

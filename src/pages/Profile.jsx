@@ -4,6 +4,7 @@ import { Page } from '../components/shared/AppLayout'
 import { useAuthStore } from '../store/authStore'
 import { useToastStore } from '../store/toastStore'
 import { formatPhoneBR, isPhoneBR } from '../utils/br'
+import { formatCNPJ, formatCPF } from '../utils/documentValidation'
 
 export function Profile() {
   const { user, updateProfile } = useAuthStore()
@@ -28,8 +29,14 @@ export function Profile() {
           <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Perfil</p>
           <h2 className="font-display text-3xl font-bold">Dados da conta</h2>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">Atualize os dados usados nos agendamentos e avisos do sistema.</p>
+          <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${user?.verified ? 'bg-[var(--accent-subtle)] text-[var(--accent-text)]' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]'}`}>
+            {user?.verified ? 'Identidade verificada' : 'Verificacao pendente'}
+          </span>
         </div>
         <div className="grid gap-4">
+          {user?.cpf ? <Input label="CPF" value={formatCPF(user.cpf)} disabled /> : null}
+          {user?.cnpj ? <Input label="CNPJ" value={formatCNPJ(user.cnpj)} disabled /> : null}
+          {user?.razaoSocial ? <Input label="Razao social" value={user.razaoSocial} disabled /> : null}
           <Input label="Nome" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
           <Input label="E-mail" type="email" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
           <Input label="Telefone" value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: formatPhoneBR(event.target.value) })} error={phoneError} />
