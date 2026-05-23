@@ -106,7 +106,6 @@ export function Register() {
             <Input label="CPF" {...register('cpf', { onChange: (event) => setValue('cpf', formatCPF(event.target.value), { shouldValidate: true }) })} error={errors.cpf?.message} />
             <Input label="Nome completo" {...register('fullName')} error={errors.fullName?.message} />
             <Input label="Data de nascimento" placeholder="DD/MM/AAAA" {...register('birthDate', { onChange: (event) => setValue('birthDate', formatBirthDate(event.target.value), { shouldValidate: true }) })} error={errors.birthDate?.message} />
-            <Input label="Nome completo da mae" {...register('motherName')} error={errors.motherName?.message} />
           </>
         ) : (
           <>
@@ -136,14 +135,12 @@ async function prepareClientIdentity(data, users, setError, setVerifyStatus, not
     cpf,
     name: data.fullName,
     birthDate: brDateToISO(data.birthDate),
-    motherName: data.motherName,
   })
 
   if (verification.reason === 'data_mismatch') {
     const fieldMap = {
       nome: ['fullName', 'O nome informado nao corresponde ao CPF cadastrado.'],
       data_nascimento: ['birthDate', 'A data de nascimento nao corresponde ao CPF cadastrado.'],
-      nome_mae: ['motherName', 'O nome da mae nao corresponde ao CPF cadastrado.'],
     }
     const [field, message] = fieldMap[verification.field] || fieldMap.nome
     setError(field, { message })
@@ -151,7 +148,7 @@ async function prepareClientIdentity(data, users, setError, setVerifyStatus, not
   }
 
   if (!verification.verified && !ALLOW_UNVERIFIED_IDENTITY) {
-    setError('cpf', { message: 'Nao foi possivel confirmar CPF, nome, nascimento e mae. Configure a verificacao Serpro para cadastrar este CPF.' })
+    setError('cpf', { message: 'Nao foi possivel confirmar CPF, nome e nascimento. Configure a verificacao Serpro para cadastrar este CPF.' })
     notify({ type: 'error', title: 'Cadastro bloqueado', message: 'CPF valido no formato nao confirma identidade sem consulta externa.' })
     return null
   }
@@ -164,7 +161,6 @@ async function prepareClientIdentity(data, users, setError, setVerifyStatus, not
     cpf,
     fullName: data.fullName,
     birthDate: brDateToISO(data.birthDate),
-    motherName: data.motherName,
     verified: verification.verified,
     verifiedAt: verification.verified ? new Date().toISOString() : null,
   }

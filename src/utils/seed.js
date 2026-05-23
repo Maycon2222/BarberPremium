@@ -72,7 +72,7 @@ const date = (offset) => format(addDays(today, offset), 'yyyy-MM-dd')
 export const usersSeed = [
   { id: 'test-admin', name: 'Admin Teste', email: 'admin.teste@barberprime.local', password: 'admin123', role: 'admin', phone: '(11) 95555-9000', cnpj: '12345678000195', razaoSocial: 'Barber Prime Teste LTDA', verified: false, verifiedAt: null },
   { id: 'test-barber', name: 'Barbeiro Teste', email: 'barbeiro.teste@barberprime.local', password: 'barbeiro123', role: 'barber', phone: '(11) 97777-9000', cnpj: '98765432000198', razaoSocial: 'Barbeiro Teste Servicos LTDA', verified: false, verifiedAt: null },
-  { id: 'test-client', name: 'Cliente Teste', email: 'cliente.teste@barberprime.local', password: 'cliente123', role: 'client', phone: '(11) 99999-9000', cpf: '12345678909', fullName: 'Cliente Teste Silva', birthDate: '1995-05-20', motherName: 'Maria Teste Silva', verified: false, verifiedAt: null },
+  { id: 'test-client', name: 'Cliente Teste', email: 'cliente.teste@barberprime.local', password: 'cliente123', role: 'client', phone: '(11) 99999-9000', cpf: '12345678909', fullName: 'Cliente Teste Silva', birthDate: '1995-05-20', verified: false, verifiedAt: null },
 ]
 
 export const appointmentsSeed = [

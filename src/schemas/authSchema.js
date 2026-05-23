@@ -14,7 +14,6 @@ export const registerSchema = loginSchema.extend({
   cpf: z.string().optional(),
   fullName: z.string().optional(),
   birthDate: z.string().optional(),
-  motherName: z.string().optional(),
   cnpj: z.string().optional(),
   razaoSocial: z.string().optional(),
   confirmPassword: z.string(),
@@ -32,9 +31,6 @@ export const registerSchema = loginSchema.extend({
     }
     if (!data.birthDate || !isAdultBirthDate(data.birthDate)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Data invalida ou idade menor que 18 anos', path: ['birthDate'] })
-    }
-    if (!data.motherName || !hasFullName(data.motherName)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe nome e sobrenome da mae', path: ['motherName'] })
     }
   }
 

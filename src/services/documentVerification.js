@@ -8,6 +8,11 @@ export async function verifyCPF(payload) {
   }
 
   try {
+    const answer = {
+      nome: payload.name,
+      data_nascimento: payload.birthDate,
+    }
+
     const response = await fetchWithTimeout(`${SERPRO_BASE_URL}/validate/pf`, {
       method: 'POST',
       headers: {
@@ -16,19 +21,15 @@ export async function verifyCPF(payload) {
       },
       body: JSON.stringify({
         key: { cpf: payload.cpf },
-        answer: {
-          nome: payload.name,
-          data_nascimento: payload.birthDate,
-          nome_mae: payload.motherName,
-        },
+        answer,
       }),
     })
     const data = await response.json()
     const checks = data.answer || data
-    if (checks.nome === true && checks.data_nascimento === true && checks.nome_mae === true) {
+    if (checks.nome === true && checks.data_nascimento === true) {
       return { verified: true, reason: 'success' }
     }
-    const field = checks.nome !== true ? 'nome' : checks.data_nascimento !== true ? 'data_nascimento' : 'nome_mae'
+    const field = checks.nome !== true ? 'nome' : 'data_nascimento'
     return { verified: false, reason: 'data_mismatch', field }
   } catch {
     return { verified: false, reason: 'api_error', message: 'Nao foi possivel verificar os dados agora.' }
