@@ -16,7 +16,7 @@ import { verifyCNPJ, verifyCPF } from '../services/documentVerification'
 const ALLOW_UNVERIFIED_IDENTITY = import.meta.env.VITE_ALLOW_UNVERIFIED_IDENTITY === 'true'
 
 function redirectFor(role) {
-  return role === 'admin' ? '/admin/dashboard' : role === 'barber' ? '/barber/dashboard' : '/client/dashboard'
+  return role === 'admin' ? '/admin/dashboard' : role === 'owner' ? '/owner/dashboard' : role === 'barber' ? '/barber/dashboard' : '/client/dashboard'
 }
 
 export function Login() {

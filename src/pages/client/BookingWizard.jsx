@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -11,6 +11,7 @@ import { appointmentSchema } from '../../schemas/appointmentSchema'
 import { useAppointmentStore } from '../../store/appointmentStore'
 import { useAuthStore } from '../../store/authStore'
 import { useServiceStore } from '../../store/serviceStore'
+import { useShopStore } from '../../store/shopStore'
 import { useToastStore } from '../../store/toastStore'
 import { availableTimes, isSlotUnavailable, isWorkingDay } from '../../utils/businessRules'
 import { formatPhoneBR } from '../../utils/br'
@@ -19,10 +20,14 @@ import { PAYMENT_METHODS, calculateDynamicSelection, calculatePrice, findSelecti
 const steps = ['Barbeiro', 'Horario', 'Servico', 'Confirmacao']
 
 export function BookingWizard() {
-  const [step, setStep] = useState(0)
+  const [searchParams] = useSearchParams()
+  const preselectedShopId = searchParams.get('shopId') || ''
+  const preselectedBarberId = searchParams.get('barberId') || ''
+  const [step, setStep] = useState(preselectedBarberId ? 1 : 0)
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const { categories, options } = useServiceStore()
+  const { shops } = useShopStore()
   const { appointments, barbers, createAppointment, settings } = useAppointmentStore()
   const { notify } = useToastStore()
   const dates = useMemo(() => Array.from({ length: 10 }, (_, index) => format(addDays(new Date(), index), 'yyyy-MM-dd')), [])
@@ -36,7 +41,8 @@ export function BookingWizard() {
       clientEmail: user?.email || '',
       serviceId: 'custom-dynamic',
       selectedOptionIds: [],
-      barberId: '',
+      barberId: preselectedBarberId,
+      shopId: preselectedShopId,
       date: defaultDate,
       time: '',
       paymentMethod: 'pix',
@@ -45,6 +51,8 @@ export function BookingWizard() {
   const selectedOptionIds = form.watch('selectedOptionIds') || []
   const totals = calculateDynamicSelection(selectedOptionIds, options)
   const selectedBarber = barbers.find((barber) => barber.id === form.watch('barberId'))
+  const selectedShop = shops.find((shop) => shop.id === (form.watch('shopId') || selectedBarber?.shopId || preselectedShopId))
+  const scheduleSettings = selectedShop ? toBusinessSettings(selectedShop.settings) : settings
   const priceInfo = calculatePrice(totals, selectedBarber)
   const requiredCategoryIds = getActiveCategories(categories).filter((category) => category.required).map((category) => category.id)
   const missingRequired = requiredCategoryIds.filter((categoryId) => !totals.selectedOptions.some((option) => option.categoryId === categoryId))
@@ -78,6 +86,7 @@ export function BookingWizard() {
       const appointment = createAppointment({
         ...data,
         serviceId: 'custom-dynamic',
+        shopId: selectedShop?.id || selectedBarber?.shopId || '',
         clientId: user?.id || 'guest',
         price: priceInfo.finalPrice,
         pricingModel: selectedBarber?.pricingModel || 'fixed',
@@ -119,10 +128,10 @@ export function BookingWizard() {
       <Card>
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: 32 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -32 }} transition={{ duration: 0.24 }}>
-            {step === 0 && <BarberStep barbers={barbers} options={options} selected={form.watch('barberId')} select={(id) => form.setValue('barberId', id, { shouldValidate: true })} />}
-            {step === 1 && <TimeStep dates={dates} times={availableTimes(settings)} form={form} appointments={appointments} />}
+            {step === 0 && <BarberStep barbers={barbers.filter((barber) => !preselectedShopId || barber.shopId === preselectedShopId)} options={options} selected={form.watch('barberId')} select={(id) => { const barber = barbers.find((item) => item.id === id); form.setValue('barberId', id, { shouldValidate: true }); form.setValue('shopId', barber?.shopId || '', { shouldValidate: true }) }} />}
+            {step === 1 && <TimeStep dates={dates} times={availableTimes(scheduleSettings)} form={form} appointments={appointments} />}
             {step === 2 && <DynamicServiceStep form={form} categories={categories} options={options} selectedBarber={selectedBarber} missingRequired={missingRequired} selectionConflicts={selectionConflicts} priceInfo={priceInfo} />}
-            {step === 3 && <ConfirmStep form={form} totals={totals} categories={categories} selectedBarber={selectedBarber} priceInfo={priceInfo} />}
+            {step === 3 && <ConfirmStep form={form} totals={totals} categories={categories} selectedBarber={selectedBarber} selectedShop={selectedShop} priceInfo={priceInfo} />}
           </motion.div>
         </AnimatePresence>
         <div className="mt-6 flex justify-between gap-3">
@@ -296,7 +305,7 @@ function getUnsupportedOptions(optionIds, barber, options) {
     .filter((option) => option && !barber.specialtyOptionIds.includes(option.id))
 }
 
-function ConfirmStep({ form, totals, categories, selectedBarber, priceInfo }) {
+function ConfirmStep({ form, totals, categories, selectedBarber, selectedShop, priceInfo }) {
   const { register, setValue, formState: { errors } } = form
   const date = form.watch('date')
   const time = form.watch('time')
@@ -321,6 +330,7 @@ function ConfirmStep({ form, totals, categories, selectedBarber, priceInfo }) {
         <CreditCard className="mb-2 h-5 w-5 text-[var(--accent-default)]" />
         <p className="font-semibold">Total: {money(priceInfo.finalPrice)} em {totals.totalMinutes} min</p>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">{priceInfo.breakdown}</p>
+        {selectedShop ? <p className="mt-1 text-sm text-[var(--text-secondary)]">Barbearia: {selectedShop.name}</p> : null}
         <p className="mt-1 text-sm text-[var(--text-secondary)]">Com {selectedBarber?.name || 'barbeiro selecionado'} em {date} as {time}</p>
         <p className="text-sm text-[var(--text-secondary)]">Modo demonstracao: pagamentos nao sao processados. PIX e cartao entram como pagos na simulacao.</p>
         <div className="mt-4 grid gap-3">
@@ -336,4 +346,12 @@ function ConfirmStep({ form, totals, categories, selectedBarber, priceInfo }) {
       </div>
     </div>
   )
+}
+
+function toBusinessSettings(shopSettings) {
+  return {
+    start: shopSettings?.workingHours?.start || '08:00',
+    end: shopSettings?.workingHours?.end || '19:00',
+    interval: shopSettings?.slotInterval || 30,
+  }
 }

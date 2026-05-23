@@ -16,7 +16,7 @@ export function Landing() {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={toggle}>{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
             <Link to="/login"><Button variant="secondary">Entrar</Button></Link>
-            <Link to="/client/book"><Button>Agendar</Button></Link>
+            <Link to="/explore"><Button>Explorar</Button></Link>
           </div>
         </div>
       </header>
@@ -28,8 +28,8 @@ export function Landing() {
             <h1 className="max-w-3xl font-display text-5xl font-bold leading-tight md:text-6xl">Barber Prime</h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--text-secondary)]">Agendamento online, pagamentos simbolicos, comprovante instantaneo e operacao completa para cliente, barbeiro e administrador.</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/client/book"><Button size="lg"><CalendarCheck className="h-5 w-5" /> Novo agendamento</Button></Link>
-              <Link to="/register"><Button variant="secondary" size="lg">Criar conta</Button></Link>
+              <Link to="/explore"><Button size="lg"><CalendarCheck className="h-5 w-5" /> Novo agendamento</Button></Link>
+              <Link to="/cadastro/barbearia"><Button variant="secondary" size="lg">Cadastrar barbearia</Button></Link>
             </div>
           </motion.div>
           <Card className="bg-[var(--bg-surface)]/86 backdrop-blur">
@@ -51,7 +51,7 @@ export function Landing() {
             <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Servicos</p>
             <h2 className="font-display text-3xl font-bold">Menu claro, preco direto</h2>
           </div>
-          <Link to="/client/book"><Button variant="secondary">Ver horarios</Button></Link>
+          <Link to="/explore"><Button variant="secondary">Ver barbearias</Button></Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {SERVICES.map((service) => (

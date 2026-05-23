@@ -5,8 +5,11 @@ import { Shell } from './components/shared/AppLayout'
 import { PrivateRoute } from './components/shared/PrivateRoute'
 
 const Landing = lazy(() => import('./pages/Landing').then((module) => ({ default: module.Landing })))
+const Explore = lazy(() => import('./pages/Explore').then((module) => ({ default: module.Explore })))
+const ShopPage = lazy(() => import('./pages/ShopPage').then((module) => ({ default: module.ShopPage })))
 const Login = lazy(() => import('./pages/Auth').then((module) => ({ default: module.Login })))
 const Register = lazy(() => import('./pages/Auth').then((module) => ({ default: module.Register })))
+const ShopRegister = lazy(() => import('./pages/ShopRegister').then((module) => ({ default: module.ShopRegister })))
 const ClientDashboard = lazy(() => import('./pages/client/ClientDashboard').then((module) => ({ default: module.ClientDashboard })))
 const BookingWizard = lazy(() => import('./pages/client/BookingWizard').then((module) => ({ default: module.BookingWizard })))
 const Receipt = lazy(() => import('./pages/client/Receipt').then((module) => ({ default: module.Receipt })))
@@ -22,14 +25,19 @@ const AdminProducts = lazy(() => import('./pages/admin/AdminProducts').then((mod
 const AdminAppointments = lazy(() => import('./pages/admin/AdminAppointments').then((module) => ({ default: module.AdminAppointments })))
 const AdminReports = lazy(() => import('./pages/admin/AdminReports').then((module) => ({ default: module.AdminReports })))
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings').then((module) => ({ default: module.AdminSettings })))
+const OwnerDashboard = lazy(() => import('./pages/owner/OwnerDashboard').then((module) => ({ default: module.OwnerDashboard })))
 
 export default function App() {
   return (
     <Suspense fallback={<RouteLoader />}>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/explore" element={<Explore />} />
+        <Route path="/shop/:slug" element={<ShopPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/cadastro/cliente" element={<Register />} />
+        <Route path="/cadastro/barbearia" element={<ShopRegister />} />
 
         <Route element={<PrivateRoute role="client" />}>
           <Route path="/client" element={<Shell role="client" />}>
@@ -63,6 +71,18 @@ export default function App() {
             <Route path="appointments" element={<AdminAppointments />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="settings" element={<AdminSettings />} />
+          </Route>
+        </Route>
+
+        <Route element={<PrivateRoute role="owner" />}>
+          <Route path="/owner" element={<Shell role="owner" />}>
+            <Route index element={<Navigate to="/owner/dashboard" replace />} />
+            <Route path="dashboard" element={<OwnerDashboard />} />
+            <Route path="barbers" element={<AdminBarbers />} />
+            <Route path="services" element={<AdminServices />} />
+            <Route path="appointments" element={<AdminAppointments />} />
+            <Route path="settings" element={<AdminSettings />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Route>
       </Routes>

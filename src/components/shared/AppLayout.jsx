@@ -31,12 +31,20 @@ const roleNav = {
     ['Relatorios', '/admin/reports', UserCog],
     ['Config', '/admin/settings', Settings],
   ],
+  owner: [
+    ['Dashboard', '/owner/dashboard', Home],
+    ['Barbeiros', '/owner/barbers', Users],
+    ['Servicos', '/owner/services', Scissors],
+    ['Agendamentos', '/owner/appointments', CalendarDays, 'today'],
+    ['Config', '/owner/settings', Settings],
+    ['Perfil', '/owner/profile', UserCircle],
+  ],
 }
 
 export function Shell({ role }) {
   const [collapsed, setCollapsed] = useState(false)
   const { user, logout } = useAuthStore()
-  const { appointments } = useAppointmentStore()
+  const { appointments, barbers } = useAppointmentStore()
   const { theme, toggle } = useTheme()
   const { toasts } = useToastStore()
   const navigate = useNavigate()
@@ -47,9 +55,10 @@ export function Shell({ role }) {
       if (appointment.date !== today || appointment.status === 'cancelled') return false
       if (role === 'client') return appointment.clientId === user?.id || appointment.clientEmail === user?.email
       if (role === 'barber') return appointment.barberId === user?.id
+      if (role === 'owner') return (appointment.shopId || barbers.find((barber) => barber.id === appointment.barberId)?.shopId) === user?.shopId
       return true
     }).length
-  }, [appointments, role, user?.email, user?.id])
+  }, [appointments, barbers, role, user?.email, user?.id, user?.shopId])
 
   useEffect(() => {
     const syncAppointments = (event) => {
