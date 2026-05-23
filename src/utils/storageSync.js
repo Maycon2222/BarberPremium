@@ -15,7 +15,7 @@ export const SYNC_KEYS = [
   'barber-seeded',
 ]
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8787'
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://127.0.0.1:8787')
 
 let installed = false
 let syncingFromRemote = false
