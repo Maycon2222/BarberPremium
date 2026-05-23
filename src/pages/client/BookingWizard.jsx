@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { addDays, format } from 'date-fns'
-import { CalendarDays, Check, CreditCard, Scissors, User } from 'lucide-react'
+import { Building2, CalendarDays, Check, CreditCard, MapPin, Scissors, User } from 'lucide-react'
 import { Avatar, Button, Card, Input } from '../../design-system'
 import { Page } from '../../components/shared/AppLayout'
 import { appointmentSchema } from '../../schemas/appointmentSchema'
@@ -17,13 +17,14 @@ import { availableTimes, isSlotUnavailable, isWorkingDay } from '../../utils/bus
 import { formatPhoneBR } from '../../utils/br'
 import { PAYMENT_METHODS, calculateDynamicSelection, calculatePrice, findSelectionConflicts, getActiveCategories, getActiveOptionsByCategory, getCompatibilityBlock, getPaymentStatusForMethod, getPricingModelLabel, money } from '../../utils/pricing'
 
-const steps = ['Barbeiro', 'Horario', 'Servico', 'Confirmacao']
+const steps = ['Barbearia', 'Barbeiro', 'Horario', 'Servico', 'Confirmacao']
 
 export function BookingWizard() {
   const [searchParams] = useSearchParams()
   const preselectedShopId = searchParams.get('shopId') || ''
   const preselectedBarberId = searchParams.get('barberId') || ''
-  const [step, setStep] = useState(preselectedBarberId ? 1 : 0)
+  const initialStep = preselectedBarberId ? 2 : preselectedShopId ? 1 : 0
+  const [step, setStep] = useState(initialStep)
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const { categories, options } = useServiceStore()
@@ -54,23 +55,30 @@ export function BookingWizard() {
   const selectedShop = shops.find((shop) => shop.id === (form.watch('shopId') || selectedBarber?.shopId || preselectedShopId))
   const scheduleSettings = selectedShop ? toBusinessSettings(selectedShop.settings) : settings
   const priceInfo = calculatePrice(totals, selectedBarber)
-  const requiredCategoryIds = getActiveCategories(categories).filter((category) => category.required).map((category) => category.id)
+  const availableOptionsForBarber = getOptionsForBarber(options, selectedBarber)
+  const requiredCategoryIds = getActiveCategories(categories)
+    .filter((category) => category.required && availableOptionsForBarber.some((option) => option.active && option.categoryId === category.id))
+    .map((category) => category.id)
   const missingRequired = requiredCategoryIds.filter((categoryId) => !totals.selectedOptions.some((option) => option.categoryId === categoryId))
   const selectionConflicts = findSelectionConflicts(selectedOptionIds, options)
   const unsupportedOptions = getUnsupportedOptions(selectedOptionIds, selectedBarber, options)
 
   const next = async () => {
-    const fields = step === 0 ? ['barberId'] : step === 1 ? ['date', 'time'] : step === 2 ? ['selectedOptionIds'] : ['clientName', 'clientPhone', 'clientEmail', 'paymentMethod']
+    if (step === 0 && !form.watch('shopId')) {
+      notify({ type: 'error', title: 'Escolha a barbearia', message: 'Selecione uma barbearia para continuar.' })
+      return
+    }
+    const fields = step === 0 ? ['shopId'] : step === 1 ? ['barberId'] : step === 2 ? ['date', 'time'] : step === 3 ? ['selectedOptionIds'] : ['clientName', 'clientPhone', 'clientEmail', 'paymentMethod']
     const valid = await form.trigger(fields)
-    if (step === 2 && missingRequired.length) {
+    if (step === 3 && missingRequired.length) {
       notify({ type: 'error', title: 'Escolha incompleta', message: 'Selecione uma opcao nas categorias obrigatorias.' })
       return
     }
-    if (step === 2 && selectionConflicts.length) {
+    if (step === 3 && selectionConflicts.length) {
       notify({ type: 'error', title: 'Opcao incompativel', message: selectionConflicts[0].message })
       return
     }
-    if (step === 2 && unsupportedOptions.length) {
+    if (step === 3 && unsupportedOptions.length) {
       notify({ type: 'error', title: 'Especialidade indisponivel', message: `${selectedBarber?.name} nao oferece ${unsupportedOptions[0].name}.` })
       return
     }
@@ -117,7 +125,7 @@ export function BookingWizard() {
         <div className="mt-5 h-2 rounded-full bg-[var(--bg-subtle)]">
           <motion.div className="h-2 rounded-full bg-[var(--accent-default)]" animate={{ width: `${((step + 1) / steps.length) * 100}%` }} />
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
           {steps.map((label, index) => (
             <div key={label} className={`rounded-[var(--radius-md)] border px-3 py-2 text-xs font-semibold ${index <= step ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)] text-[var(--accent-text)]' : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-secondary)]'}`}>
               {index + 1}. {label}
@@ -128,15 +136,16 @@ export function BookingWizard() {
       <Card>
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: 32 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -32 }} transition={{ duration: 0.24 }}>
-            {step === 0 && <BarberStep barbers={barbers.filter((barber) => !preselectedShopId || barber.shopId === preselectedShopId)} options={options} selected={form.watch('barberId')} select={(id) => { const barber = barbers.find((item) => item.id === id); form.setValue('barberId', id, { shouldValidate: true }); form.setValue('shopId', barber?.shopId || '', { shouldValidate: true }) }} />}
-            {step === 1 && <TimeStep dates={dates} times={availableTimes(scheduleSettings)} form={form} appointments={appointments} />}
-            {step === 2 && <DynamicServiceStep form={form} categories={categories} options={options} selectedBarber={selectedBarber} missingRequired={missingRequired} selectionConflicts={selectionConflicts} priceInfo={priceInfo} />}
-            {step === 3 && <ConfirmStep form={form} totals={totals} categories={categories} selectedBarber={selectedBarber} selectedShop={selectedShop} priceInfo={priceInfo} />}
+            {step === 0 && <ShopStep shops={shops} barbers={barbers} selected={form.watch('shopId')} select={(id) => { form.setValue('shopId', id, { shouldValidate: true }); form.setValue('barberId', '', { shouldValidate: true }); form.setValue('time', '', { shouldValidate: true }); form.setValue('selectedOptionIds', [], { shouldValidate: true }) }} />}
+            {step === 1 && <BarberStep barbers={barbers.filter((barber) => barber.shopId === form.watch('shopId'))} options={options} selected={form.watch('barberId')} select={(id) => { const barber = barbers.find((item) => item.id === id); form.setValue('barberId', id, { shouldValidate: true }); form.setValue('shopId', barber?.shopId || form.watch('shopId'), { shouldValidate: true }); form.setValue('time', '', { shouldValidate: true }); form.setValue('selectedOptionIds', [], { shouldValidate: true }) }} />}
+            {step === 2 && <TimeStep dates={dates} times={availableTimes(scheduleSettings)} form={form} appointments={appointments} />}
+            {step === 3 && <DynamicServiceStep form={form} categories={categories} options={options} selectedBarber={selectedBarber} missingRequired={missingRequired} selectionConflicts={selectionConflicts} priceInfo={priceInfo} />}
+            {step === 4 && <ConfirmStep form={form} totals={totals} categories={categories} selectedBarber={selectedBarber} selectedShop={selectedShop} priceInfo={priceInfo} />}
           </motion.div>
         </AnimatePresence>
         <div className="mt-6 flex justify-between gap-3">
           <Button variant="secondary" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>Voltar</Button>
-          {step < 3 ? <Button onClick={next}>Continuar</Button> : <Button onClick={submit}><Check className="h-4 w-4" /> Confirmar</Button>}
+          {step < steps.length - 1 ? <Button onClick={next}>Continuar</Button> : <Button onClick={submit}><Check className="h-4 w-4" /> Confirmar</Button>}
         </div>
       </Card>
     </Page>
@@ -153,11 +162,51 @@ function LiveSummary({ totals, priceInfo }) {
   )
 }
 
+function ShopStep({ shops, barbers, selected, select }) {
+  const activeShops = shops.filter((shop) => shop.active)
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {activeShops.map((shop) => {
+        const shopBarbers = barbers.filter((barber) => barber.active && barber.shopId === shop.id)
+        const start = formatBusinessHour(shop.settings?.workingHours?.start || '08:00')
+        const end = formatBusinessHour(shop.settings?.workingHours?.end || '19:00')
+        return (
+          <button key={shop.id} type="button" onClick={() => select(shop.id)} className={`overflow-hidden rounded-[var(--radius-lg)] border text-left transition ${selected === shop.id ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)] hover:border-[var(--accent-default)]'}`}>
+            <div className="h-36 bg-[var(--bg-subtle)]">
+              {shop.coverImage ? <img src={shop.coverImage} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Building2 className="h-10 w-10 text-[var(--text-secondary)]" /></div>}
+            </div>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-display text-xl font-bold">{shop.name}</p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">{shop.description}</p>
+                </div>
+                {selected === shop.id ? <span className="rounded-full bg-[var(--accent-default)] p-1 text-[var(--bg-default)]"><Check className="h-4 w-4" /></span> : null}
+              </div>
+              <div className="mt-4 grid gap-2 text-sm text-[var(--text-secondary)]">
+                <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {shop.address}</p>
+                <p className="flex items-center gap-2"><Scissors className="h-4 w-4" /> {shopBarbers.length} barbeiro{shopBarbers.length === 1 ? '' : 's'} disponiveis</p>
+                <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {start} as {end}</p>
+              </div>
+            </div>
+          </button>
+        )
+      })}
+      {!activeShops.length ? (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 text-center text-sm text-[var(--text-secondary)] md:col-span-2">
+          Nenhuma barbearia ativa no momento.
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function BarberStep({ barbers, options, selected, select }) {
   const list = barbers.filter((barber) => barber.active)
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {list.map((barber) => {
+    <>
+      <div className="grid gap-4 md:grid-cols-3">
+        {list.map((barber) => {
         const specialtyNames = (barber.specialtyOptionIds || [])
           .map((id) => options.find((option) => option.id === id)?.name)
           .filter(Boolean)
@@ -175,8 +224,14 @@ function BarberStep({ barbers, options, selected, select }) {
             ) : null}
           </button>
         )
-      })}
-    </div>
+        })}
+      </div>
+      {!list.length ? (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 text-center text-sm text-[var(--text-secondary)]">
+          Esta barbearia ainda nao tem barbeiros ativos.
+        </div>
+      ) : null}
+    </>
   )
 }
 
@@ -212,10 +267,12 @@ function DynamicServiceStep({ form, categories, options, selectedBarber, missing
   const [typeFilter, setTypeFilter] = useState('all')
   const selected = form.watch('selectedOptionIds') || []
   const activeCategories = getActiveCategories(categories)
+  const barberOptions = getOptionsForBarber(options, selectedBarber)
+  const barberOptionIds = new Set(barberOptions.map((option) => option.id))
   const matchesFilters = (option) => {
     const matchesSearch = `${option.name} ${option.description || ''}`.toLowerCase().includes(serviceSearch.toLowerCase().trim())
     const matchesType = typeFilter === 'all' || (typeFilter === 'required' ? option.required || option.optionType === 'required' : option.optionType === typeFilter)
-    return matchesSearch && matchesType
+    return matchesSearch && matchesType && barberOptionIds.has(option.id)
   }
   const visibleCategoryGroups = activeCategories
     .map((category) => ({ category, options: getActiveOptionsByCategory(category.id, options).filter(matchesFilters) }))
@@ -250,7 +307,7 @@ function DynamicServiceStep({ form, categories, options, selectedBarber, missing
       </div>
       {!visibleCategoryGroups.length ? (
         <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 text-center text-sm text-[var(--text-secondary)]">
-          Nenhuma opcao encontrada para os filtros atuais.
+          {barberOptions.length ? 'Nenhuma opcao encontrada para os filtros atuais.' : 'Este barbeiro ainda nao tem servicos vinculados.'}
         </div>
       ) : null}
       {visibleCategoryGroups.map(({ category, options: categoryOptions }) => {
@@ -267,9 +324,8 @@ function DynamicServiceStep({ form, categories, options, selectedBarber, missing
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {categoryOptions.map((option) => {
                 const checked = selected.includes(option.id)
-                const specialtyReason = !checked ? getSpecialtyBlock(option, selectedBarber) : null
                 const compatibilityReason = !checked ? getCompatibilityBlock(option, selected, options) : null
-                const blockReason = specialtyReason || compatibilityReason
+                const blockReason = compatibilityReason
                 const hasConflict = selectionConflicts.some((conflict) => conflict.optionId === option.id)
                 return (
                   <button key={option.id} type="button" disabled={Boolean(blockReason)} onClick={() => toggleOption(option, category)} className={`rounded-[var(--radius-md)] border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${checked ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : hasConflict ? 'border-[var(--status-cancelled)] bg-red-500/10' : 'border-[var(--border-default)] bg-[var(--bg-elevated)] hover:border-[var(--accent-default)]'}`}>
@@ -293,9 +349,9 @@ function DynamicServiceStep({ form, categories, options, selectedBarber, missing
   )
 }
 
-function getSpecialtyBlock(option, barber) {
-  if (!barber?.specialtyOptionIds?.length) return null
-  return barber.specialtyOptionIds.includes(option.id) ? null : `${barber.name} nao oferece esta opcao`
+function getOptionsForBarber(options, barber) {
+  if (!barber?.specialtyOptionIds?.length) return options.filter((option) => option.active)
+  return options.filter((option) => option.active && barber.specialtyOptionIds.includes(option.id))
 }
 
 function getUnsupportedOptions(optionIds, barber, options) {
@@ -354,4 +410,9 @@ function toBusinessSettings(shopSettings) {
     end: shopSettings?.workingHours?.end || '19:00',
     interval: shopSettings?.slotInterval || 30,
   }
+}
+
+function formatBusinessHour(value) {
+  if (typeof value === 'number') return `${String(value).padStart(2, '0')}:00`
+  return String(value || '')
 }
