@@ -22,6 +22,7 @@ export function Receipt() {
     : calculatePrice(dynamic, barber)
   const paymentMethod = getPaymentMethod(appointment.paymentMethod)
   const paymentStatus = getPaymentStatus(appointment.paymentStatus || 'pending')
+  const selectedShopServices = appointment.selectedServicesSnapshot || []
   const groupedOptions = dynamic.selectedOptions.reduce((groups, option) => {
     const category = categories.find((item) => item.id === option.categoryId)
     const key = option.categoryId || 'outros'
@@ -40,15 +41,22 @@ export function Receipt() {
           <p className="mt-2 text-sm text-[var(--text-secondary)]">Modo demonstracao: este codigo identifica a reserva, mas nao representa pagamento real.</p>
         </div>
         <div className="grid gap-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)] p-4 text-left">
-          <p><strong>Servico:</strong> {service?.name || 'Atendimento personalizado'}</p>
+          <p><strong>Servico:</strong> {selectedShopServices.length ? selectedShopServices.map((item) => item.name).join(' + ') : service?.name || 'Atendimento personalizado'}</p>
           <p><strong>Barbeiro:</strong> {barber?.name}</p>
           <p><strong>Quando:</strong> {appointment.date} as {appointment.time}</p>
-          <p><strong>Tempo estimado:</strong> {appointment.estimatedMinutes || service?.duration || dynamic.totalMinutes || 30} min</p>
+          <p><strong>Tempo estimado:</strong> {appointment.estimatedMinutes || appointment.totalMinutes || service?.duration || dynamic.totalMinutes || 30} min</p>
           <p><strong>Valor:</strong> {money(priceInfo.finalPrice)}</p>
           <p><strong>Calculo:</strong> {priceInfo.breakdown}</p>
           <p><strong>Pagamento:</strong> {paymentMethod?.name || 'Nao informado'}</p>
           <p><strong>Status do pagamento:</strong> {paymentStatus?.name || 'Pendente'}</p>
-          {dynamic.selectedOptions.length ? (
+          {selectedShopServices.length ? (
+            <div>
+              <strong>Servicos escolhidos:</strong>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedShopServices.map((item) => <span key={item.id} className="rounded-full bg-[var(--bg-elevated)] px-3 py-1 text-xs">{item.name}</span>)}
+              </div>
+            </div>
+          ) : dynamic.selectedOptions.length ? (
             <div>
               <strong>Opcoes escolhidas:</strong>
               <div className="mt-2 grid gap-2">

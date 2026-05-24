@@ -90,6 +90,7 @@ export const appointmentsSeed = [
   ['10', 'Renan Silva', 'client-10', 'barber-joao', 'corte-simples', 5, '12:00', 'confirmed', 'pix'],
 ].map(([id, clientName, clientId, barberId, serviceId, offset, time, status, paymentMethod]) => {
   const service = SERVICES.find((item) => item.id === serviceId)
+  const barber = barbersSeed.find((item) => item.id === barberId)
   return {
     id,
     clientName,
@@ -97,6 +98,7 @@ export const appointmentsSeed = [
     clientPhone: '(11) 99999-1234',
     clientEmail: `${clientName.toLowerCase().replaceAll(' ', '.')}@email.com`,
     barberId,
+    shopId: barber?.shopId || '',
     serviceId,
     selectedOptionIds: service.optionIds || [],
     dynamicPricingVersion: PRICING_SEED_VERSION,
@@ -188,10 +190,12 @@ export function ensurePricingSeed() {
   const appointments = readJson('barber-appointments', [])
   if (appointments.length) {
     const migrated = appointments.map((appointment) => {
-      if (appointment.selectedOptionIds?.length) return appointment
+      const barber = barbersSeed.find((item) => item.id === appointment.barberId)
+      if (appointment.selectedOptionIds?.length) return { ...appointment, shopId: appointment.shopId || barber?.shopId || '' }
       const service = SERVICES.find((item) => item.id === appointment.serviceId)
       return {
         ...appointment,
+        shopId: appointment.shopId || barber?.shopId || '',
         selectedOptionIds: service?.optionIds || [],
         dynamicPricingVersion: PRICING_SEED_VERSION,
       }

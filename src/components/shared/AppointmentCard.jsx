@@ -8,8 +8,9 @@ export function AppointmentCard({ appointment, barbers, services, options = SERV
   const dynamic = appointment.selectedOptionsSnapshot?.length
     ? { selectedOptions: appointment.selectedOptionsSnapshot, totalMinutes: appointment.estimatedMinutes }
     : calculateDynamicSelection(appointment.selectedOptionIds || service?.optionIds || [], options)
-  const title = service?.name || 'Atendimento personalizado'
-  const duration = appointment.estimatedMinutes || service?.duration || dynamic.totalMinutes || 30
+  const selectedShopServices = appointment.selectedServicesSnapshot || []
+  const title = selectedShopServices.length ? selectedShopServices.map((item) => item.name).join(' + ') : service?.name || 'Atendimento personalizado'
+  const duration = appointment.estimatedMinutes || appointment.totalMinutes || service?.duration || dynamic.totalMinutes || 30
   const appointmentStatus = getAppointmentStatus(appointment.status)
   const payment = getPaymentStatus(appointment.paymentStatus || 'pending')
   const groupedOptions = categories.length ? dynamic.selectedOptions.reduce((groups, option) => {
@@ -27,7 +28,11 @@ export function AppointmentCard({ appointment, barbers, services, options = SERV
         </div>
         <Badge status={appointment.status}>{appointmentStatus?.name || appointment.status}</Badge>
       </div>
-      {groupedOptions ? (
+      {selectedShopServices.length ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {selectedShopServices.slice(0, 6).map((item) => <span key={item.id} className="rounded-full bg-[var(--bg-subtle)] px-2.5 py-1 text-xs text-[var(--text-secondary)]">{item.name}</span>)}
+        </div>
+      ) : groupedOptions ? (
         <div className="mt-3 grid gap-2">
           {Object.values(groupedOptions).slice(0, 3).map((group) => (
             <div key={group.id}>

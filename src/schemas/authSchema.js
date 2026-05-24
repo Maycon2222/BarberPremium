@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { isPhoneBR } from '../utils/br'
-import { hasFullName, isAdultBirthDate, sanitizeDocument, validateCNPJ, validateCPF } from '../utils/documentValidation'
+import { hasFullName, isAdultBirthDate, sanitizeDocument, validateCPF } from '../utils/documentValidation'
 
 export const loginSchema = z.object({
   email: z.string().email('E-mail invalido'),
@@ -10,7 +10,7 @@ export const loginSchema = z.object({
 export const registerSchema = loginSchema.extend({
   name: z.string().min(3, 'Nome deve ter ao menos 3 caracteres'),
   phone: z.string().refine(isPhoneBR, 'Telefone invalido'),
-  role: z.enum(['client', 'barber']).default('client'),
+  role: z.enum(['client']).default('client'),
   cpf: z.string().optional(),
   fullName: z.string().optional(),
   birthDate: z.string().optional(),
@@ -34,12 +34,4 @@ export const registerSchema = loginSchema.extend({
     }
   }
 
-  if (data.role === 'barber') {
-    if (!validateCNPJ(sanitizeDocument(data.cnpj || '')).valid) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'CNPJ invalido. Verifique os numeros.', path: ['cnpj'] })
-    }
-    if (!data.razaoSocial || data.razaoSocial.trim().length < 3) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Razao social obrigatoria', path: ['razaoSocial'] })
-    }
-  }
 })

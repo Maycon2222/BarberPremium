@@ -48,7 +48,7 @@ export const useAppointmentStore = create((set, get) => ({
   upsertBarber: (barber) => {
     const exists = get().barbers.some((item) => item.id === barber.id)
     const normalized = normalizeBarberPricing(barber)
-    const next = exists ? get().barbers.map((item) => (item.id === barber.id ? normalized : item)) : [...get().barbers, { ...normalized, id: `barber-${Date.now()}` }]
+    const next = exists ? get().barbers.map((item) => (item.id === barber.id ? normalized : item)) : [...get().barbers, { ...normalized, id: normalized.id || `barber-${Date.now()}` }]
     persistBarbers(next)
     set({ barbers: next })
   },

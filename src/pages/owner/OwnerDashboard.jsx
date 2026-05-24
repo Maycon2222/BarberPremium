@@ -14,7 +14,7 @@ export function OwnerDashboard() {
   const { shops } = useShopStore()
   const { appointments, barbers } = useAppointmentStore()
   const shop = shops.find((item) => item.id === user?.shopId)
-  const shopAppointments = appointments.filter((item) => (item.shopId || inferShopId(item.barberId, barbers)) === shop?.id)
+  const shopAppointments = appointments.filter((item) => item.shopId === shop?.id)
   const activeAppointments = shopAppointments.filter((item) => item.status !== 'cancelled')
   const completed = shopAppointments.filter((item) => item.status === 'completed')
   const revenue = activeAppointments.reduce((sum, item) => sum + Number(item.price || item.totalPrice || 0), 0)
@@ -97,8 +97,4 @@ export function OwnerDashboard() {
       </div>
     </Page>
   )
-}
-
-function inferShopId(barberId, barbers) {
-  return barbers.find((barber) => barber.id === barberId)?.shopId
 }

@@ -11,7 +11,7 @@ import { useToastStore } from '../../store/toastStore'
 const roleNav = {
   client: [
     ['Dashboard', '/client/dashboard', Home, 'today'],
-    ['Agendar', '/client/book', CalendarDays],
+    ['Agendar', '/explore', CalendarDays],
     ['Historico', '/client/history', Scissors],
     ['Perfil', '/client/profile', UserCircle],
   ],
@@ -44,7 +44,7 @@ const roleNav = {
 export function Shell({ role }) {
   const [collapsed, setCollapsed] = useState(false)
   const { user, logout } = useAuthStore()
-  const { appointments, barbers } = useAppointmentStore()
+  const { appointments } = useAppointmentStore()
   const { theme, toggle } = useTheme()
   const { toasts } = useToastStore()
   const navigate = useNavigate()
@@ -55,10 +55,10 @@ export function Shell({ role }) {
       if (appointment.date !== today || appointment.status === 'cancelled') return false
       if (role === 'client') return appointment.clientId === user?.id || appointment.clientEmail === user?.email
       if (role === 'barber') return appointment.barberId === user?.id
-      if (role === 'owner') return (appointment.shopId || barbers.find((barber) => barber.id === appointment.barberId)?.shopId) === user?.shopId
+      if (role === 'owner') return appointment.shopId === user?.shopId
       return true
     }).length
-  }, [appointments, barbers, role, user?.email, user?.id, user?.shopId])
+  }, [appointments, role, user?.email, user?.id, user?.shopId])
 
   useEffect(() => {
     const syncAppointments = (event) => {

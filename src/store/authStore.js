@@ -26,9 +26,9 @@ export const useAuthStore = create((set, get) => ({
     if (users.some((item) => item.email === payload.email)) throw new Error('E-mail ja cadastrado')
     if (payload.cpf && users.some((item) => sanitizeDocument(item.cpf || '') === sanitizeDocument(payload.cpf))) throw new Error('Este CPF ja possui uma conta. Faca login.')
     if (payload.cnpj && users.some((item) => sanitizeDocument(item.cnpj || '') === sanitizeDocument(payload.cnpj))) throw new Error('Este CNPJ ja possui uma conta cadastrada.')
-    const { confirmPassword, role: requestedRole = 'client', ...account } = payload
+    const { confirmPassword, role: requestedRole = 'client', id: requestedId, ...account } = payload
     const role = ['barber', 'owner'].includes(requestedRole) ? requestedRole : 'client'
-    const user = { id: `${role}-${Date.now()}`, role, ...account }
+    const user = { id: requestedId || `${role}-${Date.now()}`, role, ...account }
     const next = [...users, user]
     persistUsers(next)
     const sessionUser = safeSessionUser(user)

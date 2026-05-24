@@ -8,7 +8,8 @@ export const appointmentSchema = z.object({
   clientPhone: z.string().refine(isPhoneBR, 'Telefone invalido. Use (XX) XXXXX-XXXX'),
   clientEmail: z.string().email('E-mail invalido').optional().or(z.literal('')),
   serviceId: z.string().optional().or(z.literal('')),
-  selectedOptionIds: z.array(z.string()).min(1, 'Selecione ao menos uma opcao de servico'),
+  selectedServiceIds: z.array(z.string()).min(1, 'Selecione ao menos um servico'),
+  selectedOptionIds: z.array(z.string()).optional().default([]),
   shopId: z.string({ required_error: 'Selecione uma barbearia' }).min(1, 'Selecione uma barbearia'),
   barberId: z.string({ required_error: 'Selecione um barbeiro' }).min(1, 'Selecione um barbeiro'),
   date: z.string().refine((value) => {

@@ -26,6 +26,7 @@ const AdminAppointments = lazy(() => import('./pages/admin/AdminAppointments').t
 const AdminReports = lazy(() => import('./pages/admin/AdminReports').then((module) => ({ default: module.AdminReports })))
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings').then((module) => ({ default: module.AdminSettings })))
 const OwnerDashboard = lazy(() => import('./pages/owner/OwnerDashboard').then((module) => ({ default: module.OwnerDashboard })))
+const OwnerBarbers = lazy(() => import('./pages/owner/OwnerBarbers').then((module) => ({ default: module.OwnerBarbers })))
 
 export default function App() {
   return (
@@ -78,7 +79,7 @@ export default function App() {
           <Route path="/owner" element={<Shell role="owner" />}>
             <Route index element={<Navigate to="/owner/dashboard" replace />} />
             <Route path="dashboard" element={<OwnerDashboard />} />
-            <Route path="barbers" element={<AdminBarbers />} />
+            <Route path="barbers" element={<OwnerBarbers />} />
             <Route path="services" element={<AdminServices />} />
             <Route path="appointments" element={<AdminAppointments />} />
             <Route path="settings" element={<AdminSettings />} />

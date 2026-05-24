@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,12 +10,11 @@ import { Page } from '../../components/shared/AppLayout'
 import { appointmentSchema } from '../../schemas/appointmentSchema'
 import { useAppointmentStore } from '../../store/appointmentStore'
 import { useAuthStore } from '../../store/authStore'
-import { useServiceStore } from '../../store/serviceStore'
 import { useShopStore } from '../../store/shopStore'
 import { useToastStore } from '../../store/toastStore'
 import { availableTimes, isSlotUnavailable, isWorkingDay } from '../../utils/businessRules'
 import { formatPhoneBR } from '../../utils/br'
-import { PAYMENT_METHODS, calculateDynamicSelection, calculatePrice, findSelectionConflicts, getActiveCategories, getActiveOptionsByCategory, getCompatibilityBlock, getPaymentStatusForMethod, getPricingModelLabel, money } from '../../utils/pricing'
+import { PAYMENT_METHODS, getPaymentStatusForMethod, getPricingModelLabel, money } from '../../utils/pricing'
 
 const steps = ['Barbearia', 'Barbeiro', 'Horario', 'Servico', 'Confirmacao']
 
@@ -27,7 +26,6 @@ export function BookingWizard() {
   const [step, setStep] = useState(initialStep)
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const { categories, options } = useServiceStore()
   const { shops } = useShopStore()
   const { appointments, barbers, createAppointment, settings } = useAppointmentStore()
   const { notify } = useToastStore()
@@ -40,8 +38,8 @@ export function BookingWizard() {
       clientName: user?.name || '',
       clientPhone: user?.phone || '',
       clientEmail: user?.email || '',
-      serviceId: 'custom-dynamic',
-      selectedOptionIds: [],
+      serviceId: 'shop-services',
+      selectedServiceIds: [],
       barberId: preselectedBarberId,
       shopId: preselectedShopId,
       date: defaultDate,
@@ -49,60 +47,76 @@ export function BookingWizard() {
       paymentMethod: 'pix',
     },
   })
-  const selectedOptionIds = form.watch('selectedOptionIds') || []
-  const totals = calculateDynamicSelection(selectedOptionIds, options)
+
   const selectedBarber = barbers.find((barber) => barber.id === form.watch('barberId'))
   const selectedShop = shops.find((shop) => shop.id === (form.watch('shopId') || selectedBarber?.shopId || preselectedShopId))
   const scheduleSettings = selectedShop ? toBusinessSettings(selectedShop.settings) : settings
-  const priceInfo = calculatePrice(totals, selectedBarber)
-  const availableOptionsForBarber = getOptionsForBarber(options, selectedBarber)
-  const requiredCategoryIds = getActiveCategories(categories)
-    .filter((category) => category.required && availableOptionsForBarber.some((option) => option.active && option.categoryId === category.id))
-    .map((category) => category.id)
-  const missingRequired = requiredCategoryIds.filter((categoryId) => !totals.selectedOptions.some((option) => option.categoryId === categoryId))
-  const selectionConflicts = findSelectionConflicts(selectedOptionIds, options)
-  const unsupportedOptions = getUnsupportedOptions(selectedOptionIds, selectedBarber, options)
+  const selectedServiceIds = form.watch('selectedServiceIds') || []
+  const availableServices = useMemo(() => {
+    if (!selectedShop) return []
+    const shopServices = (selectedShop.services || []).filter((service) => service.active)
+    if (!selectedBarber?.offeredServiceIds?.length) return shopServices
+    return shopServices.filter((service) => selectedBarber.offeredServiceIds.includes(service.id))
+  }, [selectedBarber, selectedShop])
+  const selectedServices = availableServices.filter((service) => selectedServiceIds.includes(service.id))
+  const totalPrice = selectedServices.reduce((sum, service) => sum + getServicePrice(service, selectedBarber), 0)
+  const totalMinutes = selectedServices.reduce((sum, service) => sum + Number(service.estimatedMinutes || 0), 0)
+
+  useEffect(() => {
+    if (!preselectedShopId && !preselectedBarberId) {
+      navigate('/explore', { replace: true })
+    }
+  }, [preselectedShopId, preselectedBarberId, navigate])
+
+  useEffect(() => {
+    if (!form.getValues('shopId') && selectedBarber?.shopId) {
+      form.setValue('shopId', selectedBarber.shopId, { shouldValidate: true })
+    }
+  }, [form, selectedBarber])
+
+  if (!preselectedShopId && !preselectedBarberId) return null
 
   const next = async () => {
     if (step === 0 && !form.watch('shopId')) {
       notify({ type: 'error', title: 'Escolha a barbearia', message: 'Selecione uma barbearia para continuar.' })
       return
     }
-    const fields = step === 0 ? ['shopId'] : step === 1 ? ['barberId'] : step === 2 ? ['date', 'time'] : step === 3 ? ['selectedOptionIds'] : ['clientName', 'clientPhone', 'clientEmail', 'paymentMethod']
+    const fields = step === 0 ? ['shopId'] : step === 1 ? ['barberId'] : step === 2 ? ['date', 'time'] : step === 3 ? ['selectedServiceIds'] : ['clientName', 'clientPhone', 'clientEmail', 'paymentMethod']
     const valid = await form.trigger(fields)
-    if (step === 3 && missingRequired.length) {
-      notify({ type: 'error', title: 'Escolha incompleta', message: 'Selecione uma opcao nas categorias obrigatorias.' })
-      return
-    }
-    if (step === 3 && selectionConflicts.length) {
-      notify({ type: 'error', title: 'Opcao incompativel', message: selectionConflicts[0].message })
-      return
-    }
-    if (step === 3 && unsupportedOptions.length) {
-      notify({ type: 'error', title: 'Especialidade indisponivel', message: `${selectedBarber?.name} nao oferece ${unsupportedOptions[0].name}.` })
-      return
-    }
     if (valid) setStep((value) => Math.min(value + 1, steps.length - 1))
   }
 
   const submit = form.handleSubmit((data) => {
-    if (missingRequired.length) {
-      notify({ type: 'error', title: 'Escolha incompleta', message: 'Selecione uma opcao nas categorias obrigatorias.' })
+    const shopId = data.shopId || preselectedShopId || selectedBarber?.shopId
+    if (!shopId) {
+      notify({ type: 'error', title: 'Erro', message: 'Barbearia nao identificada. Volte ao explorar.' })
+      navigate('/explore', { replace: true })
       return
     }
     try {
       const appointment = createAppointment({
         ...data,
-        serviceId: 'custom-dynamic',
-        shopId: selectedShop?.id || selectedBarber?.shopId || '',
+        serviceId: 'shop-services',
+        serviceIds: data.selectedServiceIds,
+        selectedServiceIds: data.selectedServiceIds,
+        selectedServicesSnapshot: selectedServices.map((service) => ({
+          ...service,
+          price: getServicePrice(service, selectedBarber),
+        })),
+        selectedOptionIds: [],
+        selectedOptionsSnapshot: [],
+        shopId,
         clientId: user?.id || 'guest',
-        price: priceInfo.finalPrice,
+        clientEmail: user?.email || data.clientEmail,
+        clientName: user?.name || data.clientName,
+        clientPhone: user?.phone || data.clientPhone,
+        price: totalPrice,
+        totalPrice,
+        basePrice: totalPrice,
+        estimatedMinutes: totalMinutes,
+        totalMinutes,
         pricingModel: selectedBarber?.pricingModel || 'fixed',
-        pricingBreakdown: priceInfo.breakdown,
-        basePrice: totals.totalPrice,
-        estimatedMinutes: totals.totalMinutes,
-        selectedOptionIds,
-        selectedOptionsSnapshot: totals.selectedOptions,
+        pricingBreakdown: `Servicos da barbearia: ${money(totalPrice)}`,
         paymentStatus: getPaymentStatusForMethod(data.paymentMethod),
       })
       notify({ type: 'success', title: 'Confirmado', message: 'Comprovante gerado.' })
@@ -117,10 +131,10 @@ export function BookingWizard() {
       <div className="mb-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Agendamento dinamico</p>
-            <h2 className="font-display text-3xl font-bold">Monte seu atendimento</h2>
+            <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Agendamento</p>
+            <h2 className="font-display text-3xl font-bold">Escolha seu atendimento</h2>
           </div>
-          <LiveSummary totals={totals} priceInfo={priceInfo} />
+          <LiveSummary totalPrice={totalPrice} totalMinutes={totalMinutes} />
         </div>
         <div className="mt-5 h-2 rounded-full bg-[var(--bg-subtle)]">
           <motion.div className="h-2 rounded-full bg-[var(--accent-default)]" animate={{ width: `${((step + 1) / steps.length) * 100}%` }} />
@@ -136,11 +150,11 @@ export function BookingWizard() {
       <Card>
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: 32 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -32 }} transition={{ duration: 0.24 }}>
-            {step === 0 && <ShopStep shops={shops} barbers={barbers} selected={form.watch('shopId')} select={(id) => { form.setValue('shopId', id, { shouldValidate: true }); form.setValue('barberId', '', { shouldValidate: true }); form.setValue('time', '', { shouldValidate: true }); form.setValue('selectedOptionIds', [], { shouldValidate: true }) }} />}
-            {step === 1 && <BarberStep barbers={barbers.filter((barber) => barber.shopId === form.watch('shopId'))} options={options} selected={form.watch('barberId')} select={(id) => { const barber = barbers.find((item) => item.id === id); form.setValue('barberId', id, { shouldValidate: true }); form.setValue('shopId', barber?.shopId || form.watch('shopId'), { shouldValidate: true }); form.setValue('time', '', { shouldValidate: true }); form.setValue('selectedOptionIds', [], { shouldValidate: true }) }} />}
+            {step === 0 && <ShopStep shops={shops} barbers={barbers} selected={form.watch('shopId')} select={(id) => { form.setValue('shopId', id, { shouldValidate: true }); form.setValue('barberId', '', { shouldValidate: true }); form.setValue('time', '', { shouldValidate: true }); form.setValue('selectedServiceIds', [], { shouldValidate: true }) }} />}
+            {step === 1 && <BarberStep barbers={barbers.filter((barber) => barber.shopId === form.watch('shopId'))} selected={form.watch('barberId')} select={(id) => { const barber = barbers.find((item) => item.id === id); form.setValue('barberId', id, { shouldValidate: true }); form.setValue('shopId', barber?.shopId || form.watch('shopId'), { shouldValidate: true }); form.setValue('time', '', { shouldValidate: true }); form.setValue('selectedServiceIds', [], { shouldValidate: true }) }} />}
             {step === 2 && <TimeStep dates={dates} times={availableTimes(scheduleSettings)} form={form} appointments={appointments} />}
-            {step === 3 && <DynamicServiceStep form={form} categories={categories} options={options} selectedBarber={selectedBarber} missingRequired={missingRequired} selectionConflicts={selectionConflicts} priceInfo={priceInfo} />}
-            {step === 4 && <ConfirmStep form={form} totals={totals} categories={categories} selectedBarber={selectedBarber} selectedShop={selectedShop} priceInfo={priceInfo} />}
+            {step === 3 && <ServiceStep form={form} selectedBarber={selectedBarber} availableServices={availableServices} getPrice={(service) => getServicePrice(service, selectedBarber)} totalPrice={totalPrice} totalMinutes={totalMinutes} />}
+            {step === 4 && <ConfirmStep form={form} selectedServices={selectedServices} selectedBarber={selectedBarber} selectedShop={selectedShop} totalPrice={totalPrice} totalMinutes={totalMinutes} />}
           </motion.div>
         </AnimatePresence>
         <div className="mt-6 flex justify-between gap-3">
@@ -152,12 +166,11 @@ export function BookingWizard() {
   )
 }
 
-function LiveSummary({ totals, priceInfo }) {
+function LiveSummary({ totalPrice, totalMinutes }) {
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-3 text-right">
       <p className="text-sm text-[var(--text-secondary)]">Total parcial</p>
-      <p className="text-xl font-bold text-[var(--accent-text)]">{money(priceInfo.finalPrice)} <span className="text-sm font-medium text-[var(--text-secondary)]">/ {totals.totalMinutes} min</span></p>
-      <p className="mt-1 max-w-xs text-xs text-[var(--text-secondary)]">{priceInfo.breakdown}</p>
+      <p className="text-xl font-bold text-[var(--accent-text)]">{money(totalPrice)} <span className="text-sm font-medium text-[var(--text-secondary)]">/ {totalMinutes} min</span></p>
     </div>
   )
 }
@@ -192,45 +205,26 @@ function ShopStep({ shops, barbers, selected, select }) {
           </button>
         )
       })}
-      {!activeShops.length ? (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 text-center text-sm text-[var(--text-secondary)] md:col-span-2">
-          Nenhuma barbearia ativa no momento.
-        </div>
-      ) : null}
+      {!activeShops.length ? <EmptyState>Nenhuma barbearia ativa no momento.</EmptyState> : null}
     </div>
   )
 }
 
-function BarberStep({ barbers, options, selected, select }) {
+function BarberStep({ barbers, selected, select }) {
   const list = barbers.filter((barber) => barber.active)
   return (
     <>
       <div className="grid gap-4 md:grid-cols-3">
-        {list.map((barber) => {
-        const specialtyNames = (barber.specialtyOptionIds || [])
-          .map((id) => options.find((option) => option.id === id)?.name)
-          .filter(Boolean)
-          .slice(0, 4)
-        return (
+        {list.map((barber) => (
           <button key={barber.id} type="button" onClick={() => select(barber.id)} className={`rounded-[var(--radius-md)] border p-5 text-left transition ${selected === barber.id ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)]'}`}>
             <Avatar name={barber.name} size="lg" />
             <p className="mt-4 font-semibold">{barber.name}</p>
-            <p className="text-sm text-[var(--text-secondary)]">{(barber.specialtyOptionIds?.length || barber.specialties?.length || 0)} especialidades cadastradas</p>
+            <p className="text-sm text-[var(--text-secondary)]">{barber.offeredServiceIds?.length || 0} servicos cadastrados</p>
             <span className="mt-3 inline-flex rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent-text)]">{getPricingModelLabel(barber.pricingModel)}</span>
-            {specialtyNames.length ? (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {specialtyNames.map((name) => <span key={name} className="rounded-full bg-[var(--bg-subtle)] px-2 py-1 text-xs text-[var(--text-secondary)]">{name}</span>)}
-              </div>
-            ) : null}
           </button>
-        )
-        })}
+        ))}
       </div>
-      {!list.length ? (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 text-center text-sm text-[var(--text-secondary)]">
-          Esta barbearia ainda nao tem barbeiros ativos.
-        </div>
-      ) : null}
+      {!list.length ? <EmptyState>Esta barbearia ainda nao tem barbeiros ativos.</EmptyState> : null}
     </>
   )
 }
@@ -254,7 +248,6 @@ function TimeStep({ dates, times, form, appointments }) {
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
         {times.map((time) => {
           const disabled = barberId ? isSlotUnavailable(appointments, barberId, date, time) : false
-          // TODO: no modelo slot_only, bloquear slots adjacentes quando a duracao ja estiver definida.
           return <button key={time} type="button" disabled={disabled} onClick={() => form.setValue('time', time, { shouldValidate: true })} className={`rounded-[var(--radius-md)] border px-3 py-3 text-sm ${form.watch('time') === time ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)]'} disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through`}>{time}</button>
         })}
       </div>
@@ -262,115 +255,49 @@ function TimeStep({ dates, times, form, appointments }) {
   )
 }
 
-function DynamicServiceStep({ form, categories, options, selectedBarber, missingRequired, selectionConflicts, priceInfo }) {
+function ServiceStep({ form, selectedBarber, availableServices, getPrice, totalPrice, totalMinutes }) {
   const [serviceSearch, setServiceSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
-  const selected = form.watch('selectedOptionIds') || []
-  const activeCategories = getActiveCategories(categories)
-  const barberOptions = getOptionsForBarber(options, selectedBarber)
-  const barberOptionIds = new Set(barberOptions.map((option) => option.id))
-  const matchesFilters = (option) => {
-    const matchesSearch = `${option.name} ${option.description || ''}`.toLowerCase().includes(serviceSearch.toLowerCase().trim())
-    const matchesType = typeFilter === 'all' || (typeFilter === 'required' ? option.required || option.optionType === 'required' : option.optionType === typeFilter)
-    return matchesSearch && matchesType && barberOptionIds.has(option.id)
-  }
-  const visibleCategoryGroups = activeCategories
-    .map((category) => ({ category, options: getActiveOptionsByCategory(category.id, options).filter(matchesFilters) }))
-    .filter((group) => group.options.length)
-  const toggleOption = (option, category) => {
-    const current = form.getValues('selectedOptionIds') || []
-    const categoryOptions = getActiveOptionsByCategory(category.id, options).map((item) => item.id)
-    const withoutSameRequiredCategory = category.required ? current.filter((id) => !categoryOptions.includes(id)) : current
-    const exists = current.includes(option.id)
-    const next = exists ? current.filter((id) => id !== option.id) : [...withoutSameRequiredCategory, option.id]
-    form.setValue('selectedOptionIds', next, { shouldValidate: true })
+  const selectedServiceIds = form.watch('selectedServiceIds') || []
+  const visibleServices = availableServices.filter((service) => `${service.name} ${service.description || ''}`.toLowerCase().includes(serviceSearch.toLowerCase().trim()))
+  const toggleService = (serviceId) => {
+    const next = selectedServiceIds.includes(serviceId) ? selectedServiceIds.filter((id) => id !== serviceId) : [...selectedServiceIds, serviceId]
+    form.setValue('selectedServiceIds', next, { shouldValidate: true })
   }
 
   return (
     <div className="grid gap-5">
       <div className="rounded-[var(--radius-lg)] border border-[var(--accent-default)] bg-[var(--accent-subtle)] p-4">
-        <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">{selectedBarber?.name || 'Barbeiro selecionado'} - {getPricingModelLabel(selectedBarber?.pricingModel)}</p>
-        <p className="mt-1 text-2xl font-bold">{money(priceInfo.finalPrice)}</p>
-        <p className="text-sm text-[var(--text-secondary)]">{priceInfo.breakdown}</p>
+        <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">{selectedBarber?.name || 'Barbeiro selecionado'}</p>
+        <p className="mt-1 text-2xl font-bold">{money(totalPrice)}</p>
+        <p className="text-sm text-[var(--text-secondary)]">{totalMinutes} min estimados</p>
       </div>
-      <div className="grid gap-3 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-subtle)] p-4 md:grid-cols-[1fr_220px]">
-        <Input label="Buscar servico" value={serviceSearch} onChange={(event) => setServiceSearch(event.target.value)} />
-        <label className="block">
-          <span className="mb-2 block text-xs font-semibold uppercase text-[var(--text-secondary)]">Tipo</span>
-          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-12 w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3">
-            <option value="all">Todos</option>
-            <option value="required">Obrigatorios</option>
-            <option value="additional">Adicionais</option>
-            <option value="combo">Combos/pacotes</option>
-          </select>
-        </label>
-      </div>
-      {!visibleCategoryGroups.length ? (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 text-center text-sm text-[var(--text-secondary)]">
-          {barberOptions.length ? 'Nenhuma opcao encontrada para os filtros atuais.' : 'Este barbeiro ainda nao tem servicos vinculados.'}
-        </div>
-      ) : null}
-      {visibleCategoryGroups.map(({ category, options: categoryOptions }) => {
-        const missing = missingRequired.includes(category.id)
-        return (
-          <section key={category.id} className={`rounded-[var(--radius-lg)] border p-4 ${missing ? 'border-[var(--status-cancelled)]' : 'border-[var(--border-default)]'}`}>
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="font-display text-xl font-bold">{category.name}</h3>
-                <p className="text-sm text-[var(--text-secondary)]">{category.description}</p>
+      <Input label="Buscar servico" value={serviceSearch} onChange={(event) => setServiceSearch(event.target.value)} />
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {visibleServices.map((service) => {
+          const selected = selectedServiceIds.includes(service.id)
+          return (
+            <button key={service.id} type="button" onClick={() => toggleService(service.id)} className={`rounded-[var(--radius-md)] border p-4 text-left transition ${selected ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)] hover:border-[var(--accent-default)]'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold">{service.name}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">{service.description}</p>
+                  <p className="mt-2 text-sm text-[var(--text-secondary)]">{service.estimatedMinutes} min</p>
+                </div>
+                <p className="font-bold text-[var(--accent-text)]">{money(getPrice(service))}</p>
               </div>
-              <span className="rounded-full bg-[var(--bg-subtle)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">{category.required ? 'Obrigatorio' : 'Adicional'}</span>
-            </div>
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {categoryOptions.map((option) => {
-                const checked = selected.includes(option.id)
-                const compatibilityReason = !checked ? getCompatibilityBlock(option, selected, options) : null
-                const blockReason = compatibilityReason
-                const hasConflict = selectionConflicts.some((conflict) => conflict.optionId === option.id)
-                return (
-                  <button key={option.id} type="button" disabled={Boolean(blockReason)} onClick={() => toggleOption(option, category)} className={`rounded-[var(--radius-md)] border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${checked ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : hasConflict ? 'border-[var(--status-cancelled)] bg-red-500/10' : 'border-[var(--border-default)] bg-[var(--bg-elevated)] hover:border-[var(--accent-default)]'}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold">{option.name}</p>
-                        <p className="text-sm text-[var(--text-secondary)]">{option.estimatedMinutes} min</p>
-                        {blockReason ? <p className="mt-1 text-xs text-[var(--status-cancelled)]">{blockReason}</p> : null}
-                        {hasConflict ? <p className="mt-1 text-xs text-[var(--status-cancelled)]">{selectionConflicts.find((conflict) => conflict.optionId === option.id)?.message}</p> : null}
-                      </div>
-                      <p className="font-bold text-[var(--accent-text)]">{money(option.price)}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-        )
-      })}
+            </button>
+          )
+        })}
+      </div>
+      {!visibleServices.length ? <EmptyState>Este barbeiro ainda nao tem servicos vinculados.</EmptyState> : null}
     </div>
   )
 }
 
-function getOptionsForBarber(options, barber) {
-  if (!barber?.specialtyOptionIds?.length) return options.filter((option) => option.active)
-  return options.filter((option) => option.active && barber.specialtyOptionIds.includes(option.id))
-}
-
-function getUnsupportedOptions(optionIds, barber, options) {
-  if (!barber?.specialtyOptionIds?.length) return []
-  return optionIds
-    .map((id) => options.find((option) => option.id === id))
-    .filter((option) => option && !barber.specialtyOptionIds.includes(option.id))
-}
-
-function ConfirmStep({ form, totals, categories, selectedBarber, selectedShop, priceInfo }) {
+function ConfirmStep({ form, selectedServices, selectedBarber, selectedShop, totalPrice, totalMinutes }) {
   const { register, setValue, formState: { errors } } = form
   const date = form.watch('date')
   const time = form.watch('time')
-  const groupedOptions = categories
-    .map((category) => ({
-      category,
-      options: totals.selectedOptions.filter((option) => option.categoryId === category.id),
-    }))
-    .filter((group) => group.options.length)
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Input label="Nome" prefix={<User className="h-4 w-4" />} {...register('clientName')} error={errors.clientName?.message} />
@@ -384,24 +311,28 @@ function ConfirmStep({ form, totals, categories, selectedBarber, selectedShop, p
       </label>
       <div className="md:col-span-2 rounded-[var(--radius-md)] bg-[var(--bg-subtle)] p-4">
         <CreditCard className="mb-2 h-5 w-5 text-[var(--accent-default)]" />
-        <p className="font-semibold">Total: {money(priceInfo.finalPrice)} em {totals.totalMinutes} min</p>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">{priceInfo.breakdown}</p>
+        <p className="font-semibold">Total: {money(totalPrice)} em {totalMinutes} min</p>
         {selectedShop ? <p className="mt-1 text-sm text-[var(--text-secondary)]">Barbearia: {selectedShop.name}</p> : null}
         <p className="mt-1 text-sm text-[var(--text-secondary)]">Com {selectedBarber?.name || 'barbeiro selecionado'} em {date} as {time}</p>
         <p className="text-sm text-[var(--text-secondary)]">Modo demonstracao: pagamentos nao sao processados. PIX e cartao entram como pagos na simulacao.</p>
-        <div className="mt-4 grid gap-3">
-          {groupedOptions.map((group) => (
-            <div key={group.category.id} className="rounded-[var(--radius-md)] bg-[var(--bg-elevated)] p-3">
-              <p className="text-xs font-semibold uppercase text-[var(--text-secondary)]">{group.category.name}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {group.options.map((option) => <span key={option.id} className="rounded-full bg-[var(--bg-subtle)] px-3 py-1 text-xs">{option.name}</span>)}
-              </div>
-            </div>
-          ))}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {selectedServices.map((service) => <span key={service.id} className="rounded-full bg-[var(--bg-elevated)] px-3 py-1 text-xs">{service.name}</span>)}
         </div>
       </div>
     </div>
   )
+}
+
+function EmptyState({ children }) {
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 text-center text-sm text-[var(--text-secondary)] md:col-span-2">
+      {children}
+    </div>
+  )
+}
+
+function getServicePrice(service, barber) {
+  return Number(barber?.customPrices?.[service.id] ?? service.price ?? 0)
 }
 
 function toBusinessSettings(shopSettings) {
