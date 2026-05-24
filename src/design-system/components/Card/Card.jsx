@@ -3,7 +3,7 @@ import { cn } from '../../utils'
 
 export function Card({ children, className = '', appointment = false, hover = false }) {
   const classes = cn(
-    'rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-md)]',
+    'rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-md)] sm:p-5',
     appointment && 'border-l-4 border-l-[var(--accent-default)]',
     className,
   )

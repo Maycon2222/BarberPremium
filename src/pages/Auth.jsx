@@ -125,10 +125,10 @@ async function prepareClientIdentity(data, users, setError, setVerifyStatus, not
 
 function AuthFrame({ title, children }) {
   return (
-    <main className="grid min-h-screen place-items-center px-4 py-10">
+    <main className="grid min-h-screen place-items-center px-3 py-5 sm:px-4 sm:py-10">
       <Card className="w-full max-w-md">
         <Link to="/" className="mb-6 inline-block text-sm font-semibold text-[var(--accent-text)]">Barber Prime</Link>
-        <h1 className="mb-6 font-display text-3xl font-bold">{title}</h1>
+        <h1 className="mb-5 font-display text-2xl font-bold sm:mb-6 sm:text-3xl">{title}</h1>
         {children}
         <div className="mt-6 flex justify-between text-sm text-[var(--text-secondary)]">
           <Link to="/login">Login</Link>

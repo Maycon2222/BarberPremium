@@ -20,7 +20,7 @@ export const Button = forwardRef(({ variant = 'primary', size = 'md', loading = 
     ref={ref}
     disabled={disabled || loading}
     className={cn(
-      'inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-default)] disabled:cursor-not-allowed disabled:opacity-55',
+      'inline-flex min-w-0 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-default)] disabled:cursor-not-allowed disabled:opacity-55',
       variants[variant],
       sizes[size],
       className,

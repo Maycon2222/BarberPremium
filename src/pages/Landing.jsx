@@ -10,24 +10,24 @@ export function Landing() {
   const { toasts } = useToastStore()
   return (
     <main className="page-shell">
-      <header className="fixed left-0 right-0 top-0 z-30 border-b border-[var(--border-default)] bg-[var(--bg-base)]/75 px-4 py-3 backdrop-blur">
+      <header className="fixed left-0 right-0 top-0 z-30 border-b border-[var(--border-default)] bg-[var(--bg-base)]/75 px-3 py-3 backdrop-blur sm:px-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-display text-xl font-bold text-[var(--accent-text)]"><Scissors className="h-5 w-5" /> Barber Prime</Link>
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex min-w-0 items-center gap-2 font-display text-lg font-bold text-[var(--accent-text)] sm:text-xl"><Scissors className="h-5 w-5" /> <span className="truncate">Barber Prime</span></Link>
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <Button variant="ghost" size="sm" onClick={toggle}>{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
-            <Link to="/login"><Button variant="secondary">Entrar</Button></Link>
-            <Link to="/explore"><Button>Explorar</Button></Link>
+            <Link to="/login"><Button variant="secondary" size="sm">Entrar</Button></Link>
+            <Link to="/explore"><Button size="sm">Explorar</Button></Link>
           </div>
         </div>
       </header>
-      <section className="relative flex min-h-[92vh] items-center overflow-hidden px-4 pt-24">
+      <section className="relative flex min-h-[92vh] items-center overflow-hidden px-3 pt-24 sm:px-4">
         <div className="absolute inset-0 bg-[#12131a] bg-[linear-gradient(120deg,rgba(0,0,0,.45),transparent),url('https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1800&q=80')] bg-cover bg-center opacity-45" />
-        <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+        <div className="relative mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
             <p className="mb-4 inline-flex rounded-full border border-[var(--border-default)] bg-[var(--accent-subtle)] px-3 py-1 text-sm font-semibold text-[var(--accent-text)]">Agenda premium para barbearias</p>
-            <h1 className="max-w-3xl font-display text-5xl font-bold leading-tight md:text-6xl">Barber Prime</h1>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--text-secondary)]">Agendamento online, pagamentos simbolicos, comprovante instantaneo e operacao completa para cliente, barbeiro e administrador.</p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <h1 className="max-w-3xl font-display text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">Barber Prime</h1>
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">Agendamento online, pagamentos simbolicos, comprovante instantaneo e operacao completa para cliente, barbeiro e administrador.</p>
+            <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
               <Link to="/explore"><Button size="lg"><CalendarCheck className="h-5 w-5" /> Novo agendamento</Button></Link>
               <Link to="/cadastro/barbearia"><Button variant="secondary" size="lg">Cadastrar barbearia</Button></Link>
             </div>
@@ -45,8 +45,8 @@ export function Landing() {
           </Card>
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-4 py-16">
-        <div className="mb-8 flex items-end justify-between gap-4">
+      <section className="mx-auto max-w-7xl px-3 py-12 sm:px-4 sm:py-16">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Servicos</p>
             <h2 className="font-display text-3xl font-bold">Menu claro, preco direto</h2>

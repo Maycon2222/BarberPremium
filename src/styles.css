@@ -35,6 +35,14 @@ textarea {
   min-height: 100vh;
 }
 
+.mobile-scrollbar {
+  scrollbar-width: none;
+}
+
+.mobile-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .thin-scrollbar::-webkit-scrollbar {
   width: 8px;
   height: 8px;

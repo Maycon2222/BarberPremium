@@ -109,11 +109,11 @@ export function ShopRegister() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg-base)] px-4 py-8">
+    <main className="min-h-screen bg-[var(--bg-base)] px-3 py-4 sm:px-4 sm:py-8">
       <Card className="mx-auto max-w-3xl">
         <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Cadastro da barbearia</p>
-        <h1 className="mb-6 font-display text-3xl font-bold">Crie sua unidade na Barber Prime</h1>
-        <div className="mb-6 grid grid-cols-3 gap-2">
+        <h1 className="mb-5 font-display text-2xl font-bold sm:mb-6 sm:text-3xl">Crie sua unidade na Barber Prime</h1>
+        <div className="mb-5 grid grid-cols-3 gap-1.5 sm:mb-6 sm:gap-2">
           {['Barbearia', 'Responsavel', 'Configuracao'].map((label, index) => <div key={label} className={`rounded-[var(--radius-md)] px-3 py-2 text-center text-sm font-semibold ${step === index ? 'bg-[var(--accent-default)] text-white' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]'}`}>{label}</div>)}
         </div>
 

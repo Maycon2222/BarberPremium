@@ -106,11 +106,11 @@ export function OwnerBarbers() {
   }
 
   return (
-    <Page className="grid gap-6 xl:grid-cols-[420px_1fr]">
+    <Page className="grid gap-4 xl:grid-cols-[420px_1fr] xl:gap-6">
       <Card>
         <div className="mb-4">
           <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Equipe da barbearia</p>
-          <h2 className="font-display text-2xl font-bold">{editingId ? 'Editar barbeiro' : 'Novo barbeiro'}</h2>
+          <h2 className="font-display text-xl font-bold sm:text-2xl">{editingId ? 'Editar barbeiro' : 'Novo barbeiro'}</h2>
           {shop ? <p className="mt-1 text-sm text-[var(--text-secondary)]">{shop.name}</p> : null}
         </div>
         <div className="grid gap-3">

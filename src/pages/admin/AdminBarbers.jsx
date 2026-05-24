@@ -53,11 +53,11 @@ export function AdminBarbers() {
   }
 
   return (
-    <Page className="grid gap-6 xl:grid-cols-[420px_1fr]">
+    <Page className="grid gap-4 xl:grid-cols-[420px_1fr] xl:gap-6">
       <Card>
         <div className="mb-4">
           <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Equipe</p>
-          <h2 className="font-display text-2xl font-bold">{editingId ? 'Editar barbeiro' : 'Novo barbeiro'}</h2>
+          <h2 className="font-display text-xl font-bold sm:text-2xl">{editingId ? 'Editar barbeiro' : 'Novo barbeiro'}</h2>
         </div>
         <div className="grid gap-3">
           <Input label="Nome" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
@@ -83,7 +83,7 @@ export function AdminBarbers() {
             {draft.pricingModel === 'duration_tier' ? (
               <div className="mt-4 space-y-3">
                 {(draft.durationTiers || DEFAULT_DURATION_TIERS).map((tier, index) => (
-                  <div key={`${tier.upTo}-${index}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <div key={`${tier.upTo}-${index}`} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <Input label="Ate min" type="number" min="1" value={tier.upTo} onChange={(event) => updateTier(index, 'upTo', event.target.value)} />
                     <Input label="Acrescimo R$" type="number" min="0" step="0.01" value={tier.surcharge} onChange={(event) => updateTier(index, 'surcharge', event.target.value)} />
                     <Button variant="secondary" className="mt-6" disabled={(draft.durationTiers || DEFAULT_DURATION_TIERS).length <= 1} onClick={() => removeTier(index)}>Remover</Button>

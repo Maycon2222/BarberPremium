@@ -129,19 +129,19 @@ export function BookingWizard() {
   return (
     <Page className="mx-auto max-w-6xl">
       <div className="mb-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <p className="text-sm font-semibold uppercase text-[var(--accent-text)]">Agendamento</p>
-            <h2 className="font-display text-3xl font-bold">Escolha seu atendimento</h2>
+            <h2 className="font-display text-2xl font-bold sm:text-3xl">Escolha seu atendimento</h2>
           </div>
           <LiveSummary totalPrice={totalPrice} totalMinutes={totalMinutes} />
         </div>
         <div className="mt-5 h-2 rounded-full bg-[var(--bg-subtle)]">
           <motion.div className="h-2 rounded-full bg-[var(--accent-default)]" animate={{ width: `${((step + 1) / steps.length) * 100}%` }} />
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="mobile-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
           {steps.map((label, index) => (
-            <div key={label} className={`rounded-[var(--radius-md)] border px-3 py-2 text-xs font-semibold ${index <= step ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)] text-[var(--accent-text)]' : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-secondary)]'}`}>
+            <div key={label} className={`min-w-[118px] rounded-[var(--radius-md)] border px-3 py-2 text-xs font-semibold sm:min-w-0 ${index <= step ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)] text-[var(--accent-text)]' : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-secondary)]'}`}>
               {index + 1}. {label}
             </div>
           ))}
@@ -157,9 +157,9 @@ export function BookingWizard() {
             {step === 4 && <ConfirmStep form={form} selectedServices={selectedServices} selectedBarber={selectedBarber} selectedShop={selectedShop} totalPrice={totalPrice} totalMinutes={totalMinutes} />}
           </motion.div>
         </AnimatePresence>
-        <div className="mt-6 flex justify-between gap-3">
-          <Button variant="secondary" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>Voltar</Button>
-          {step < steps.length - 1 ? <Button onClick={next}>Continuar</Button> : <Button onClick={submit}><Check className="h-4 w-4" /> Confirmar</Button>}
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:justify-between">
+          <Button className="w-full sm:w-auto" variant="secondary" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>Voltar</Button>
+          {step < steps.length - 1 ? <Button className="w-full sm:w-auto" onClick={next}>Continuar</Button> : <Button className="w-full sm:w-auto" onClick={submit}><Check className="h-4 w-4" /> Confirmar</Button>}
         </div>
       </Card>
     </Page>
@@ -168,7 +168,7 @@ export function BookingWizard() {
 
 function LiveSummary({ totalPrice, totalMinutes }) {
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-3 text-right">
+    <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-3 text-left sm:text-right">
       <p className="text-sm text-[var(--text-secondary)]">Total parcial</p>
       <p className="text-xl font-bold text-[var(--accent-text)]">{money(totalPrice)} <span className="text-sm font-medium text-[var(--text-secondary)]">/ {totalMinutes} min</span></p>
     </div>
@@ -185,10 +185,10 @@ function ShopStep({ shops, barbers, selected, select }) {
         const end = formatBusinessHour(shop.settings?.workingHours?.end || '19:00')
         return (
           <button key={shop.id} type="button" onClick={() => select(shop.id)} className={`overflow-hidden rounded-[var(--radius-lg)] border text-left transition ${selected === shop.id ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)] hover:border-[var(--accent-default)]'}`}>
-            <div className="h-36 bg-[var(--bg-subtle)]">
+            <div className="h-32 bg-[var(--bg-subtle)] sm:h-36">
               {shop.coverImage ? <img src={shop.coverImage} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Building2 className="h-10 w-10 text-[var(--text-secondary)]" /></div>}
             </div>
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-display text-xl font-bold">{shop.name}</p>
@@ -214,7 +214,7 @@ function BarberStep({ barbers, selected, select }) {
   const list = barbers.filter((barber) => barber.active)
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {list.map((barber) => (
           <button key={barber.id} type="button" onClick={() => select(barber.id)} className={`rounded-[var(--radius-md)] border p-5 text-left transition ${selected === barber.id ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)]'}`}>
             <Avatar name={barber.name} size="lg" />
@@ -233,13 +233,13 @@ function TimeStep({ dates, times, form, appointments }) {
   const barberId = form.watch('barberId')
   const date = form.watch('date')
   return (
-    <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-      <div className="grid gap-2">
+    <div className="grid gap-4 lg:grid-cols-[260px_1fr] lg:gap-6">
+      <div className="mobile-scrollbar flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0">
         {dates.map((day) => {
           const hasAvailableSlot = times.some((slot) => !isSlotUnavailable(appointments, barberId, day, slot))
           const disabled = !isWorkingDay(day) || (barberId ? !hasAvailableSlot : false)
           return (
-            <button key={day} type="button" disabled={disabled} onClick={() => form.setValue('date', day, { shouldValidate: true })} className={`rounded-[var(--radius-md)] border px-3 py-2 text-left disabled:cursor-not-allowed disabled:opacity-45 ${date === day ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)]'}`}>
+            <button key={day} type="button" disabled={disabled} onClick={() => form.setValue('date', day, { shouldValidate: true })} className={`min-w-[132px] rounded-[var(--radius-md)] border px-3 py-2 text-left disabled:cursor-not-allowed disabled:opacity-45 lg:min-w-0 ${date === day ? 'border-[var(--accent-default)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)]'}`}>
               <CalendarDays className="mr-2 inline h-4 w-4" />{day}
             </button>
           )
@@ -272,7 +272,7 @@ function ServiceStep({ form, selectedBarber, availableServices, getPrice, totalP
         <p className="text-sm text-[var(--text-secondary)]">{totalMinutes} min estimados</p>
       </div>
       <Input label="Buscar servico" value={serviceSearch} onChange={(event) => setServiceSearch(event.target.value)} />
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {visibleServices.map((service) => {
           const selected = selectedServiceIds.includes(service.id)
           return (

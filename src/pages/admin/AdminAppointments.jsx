@@ -73,7 +73,44 @@ export function AdminAppointments() {
         <MiniMetric label="Pendentes" value={rowMetrics.pending} />
         <MiniMetric label="Cancelados" value={rowMetrics.cancelled} />
       </div>
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)]">
+      <div className="grid gap-3 lg:hidden">
+        {rows.map(({ item, selected, barber, label }) => {
+          const detail = selected.length ? selected.map((entry) => entry.name).join(', ') : 'Sem opcoes vinculadas'
+          return (
+            <Card key={item.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold">{item.clientName}</p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">{item.date} as {item.time}</p>
+                </div>
+                <p className="shrink-0 font-bold text-[var(--accent-text)]">{money(item.price || 0)}</p>
+              </div>
+              <div className="mt-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)] p-3">
+                <p className="font-semibold">{label}</p>
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">{detail}</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">Barbeiro: {barber?.name || '-'}</p>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase text-[var(--text-secondary)]">Pagamento</span>
+                  <select value={item.paymentStatus || 'pending'} onChange={(event) => updatePaymentStatus(item.id, event.target.value)} className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2 text-sm">{PAYMENT_STATUSES.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase text-[var(--text-secondary)]">Status</span>
+                  <select value={item.status || 'pending'} onChange={(event) => updateStatus(item.id, event.target.value, item.cancelReason || '')} className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2 text-sm">{APPOINTMENT_STATUSES.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select>
+                </label>
+              </div>
+              {item.status === 'cancelled' ? (
+                <label className="mt-3 block">
+                  <span className="mb-1 block text-xs font-semibold uppercase text-[var(--text-secondary)]">Motivo do cancelamento</span>
+                  <input value={item.cancelReason || ''} onChange={(event) => updateStatus(item.id, 'cancelled', event.target.value)} className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2 text-sm outline-none" />
+                </label>
+              ) : null}
+            </Card>
+          )
+        })}
+      </div>
+      <div className="hidden overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] lg:block">
         <table className="w-full min-w-[1080px] bg-[var(--bg-surface)] text-sm">
           <thead className="bg-[var(--bg-subtle)] text-left"><tr><th className="p-3">Cliente</th><th>Servico</th><th>Barbeiro</th><th>Data</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Motivo</th></tr></thead>
           <tbody>{rows.map(({ item, selected, barber, label }) => {
